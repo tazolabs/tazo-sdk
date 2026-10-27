@@ -1,4 +1,4 @@
-"""The imported 0.1.1 runtime must stay identical to both published wheels."""
+"""Verify the imported runtime and migration candidate against published 0.1.1."""
 
 import hashlib
 import importlib.util
@@ -15,13 +15,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_imported_runtime_matches_published_release():
     baseline = json.loads((ROOT / "compatibility/published-0.1.1.json").read_text())
-    if __version__ != baseline["version"]:
+    if __version__ not in {baseline["version"], "0.1.2rc1"}:
         pytest.skip("This historical baseline applies only to the imported 0.1.1 release.")
-    expected = baseline["runtime_files"]
+    expected = dict(baseline["runtime_files"])
+    excluded = {"tazo/_version.py"} if __version__ == "0.1.2rc1" else set()
+    if excluded:
+        # The workflow-test candidate changes only its runtime version identifier.
+        expected.pop("tazo/_version.py")
     source = {
         f"tazo/{path.name}": hashlib.sha256(path.read_bytes()).hexdigest()
         for path in (ROOT / "src/tazo").iterdir()
-        if path.is_file()
+        if path.is_file() and f"tazo/{path.name}" not in excluded
     }
     assert source == expected
     for name, digest in expected.items():
@@ -54,3 +58,7 @@ def test_release_guard_rejects_republication_and_requires_matching_tag(tmp_path,
     with pytest.raises(ValueError, match="reviewed release tag"):
         module.check_release("tag", "sdk-v0.2.0")
     assert module.check_release("tag", "sdk-v0.1.2") == "0.1.2"
+    version("0.1.2rc1", "0.1.2rc1")
+    with pytest.raises(ValueError, match="reviewed release tag"):
+        module.check_release("tag", "sdk-v0.1.2")
+    assert module.check_release("tag", "sdk-v0.1.2rc1") == "0.1.2rc1"

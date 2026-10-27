@@ -16,8 +16,10 @@ final decision covering the complete recording followed by `session.closed`.
 
 ## Run against the PyPI package
 
-Use Python 3.11 or newer, a virtual environment with `tazo-sdk==0.1.1` installed
-from PyPI, and a key created in the [Tazo console](https://app.tazolabs.com).
+Use Python 3.11 or newer, a virtual environment with the SDK version you are
+verifying installed, and a key created in the [Tazo console](https://app.tazolabs.com).
+The stable release is `tazo-sdk==0.1.1`; see [WORKFLOW_TEST.md](../WORKFLOW_TEST.md)
+for testing the prepared `0.1.2rc1` release candidate from TestPyPI or PyPI.
 Run directly with that environment's Python from the repository root:
 
 ```sh
