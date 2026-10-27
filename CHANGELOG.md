@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.2rc1 — 2026-10-28
 
 - Move SDK development to the public `tazolabs/tazo-sdk` repository, with
   standalone tests, documentation sources, and release workflows.
-- Preserve the runtime package from published version 0.1.1 byte for byte.
-  Repository links and development tooling changes will appear in a future
-  package release; the existing PyPI and TestPyPI files remain unchanged.
+- Add public source and issue-tracker links to the distribution metadata.
+- Prepare a release candidate to verify TestPyPI and PyPI trusted publishing
+  from the public repository.
+- Preserve the 0.1.1 runtime behavior; only the runtime version identifier changes.
 
 ## 0.1.1 — 2026-10-27
 

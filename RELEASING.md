@@ -7,7 +7,11 @@ publisher setup in [SETUP.md](SETUP.md) before publishing a **new** version from
 
 The commands below use **0.1.2** as the first future release example. Do not run
 them until the version change is reviewed and merged. Publishing workflows are
-manual; merging this migration PR does not publish a package.
+manual; merging a preparation PR does not publish a package.
+
+For the prepared **0.1.2rc1** workflow test, use [WORKFLOW_TEST.md](WORKFLOW_TEST.md).
+That checklist uses the candidate tag and exact prerelease version throughout;
+the stable 0.1.2 commands below apply only after a separate stable version bump.
 
 ## Prepare and review
 

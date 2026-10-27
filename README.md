@@ -206,12 +206,15 @@ default authorization headers if health requests must remain unauthenticated.
 
 ## Verify the published SDK
 
-This repository contains the runtime from **tazo-sdk 0.1.1**, already published
-on PyPI and TestPyPI. All ten runtime files match both published wheels byte
-for byte. Their hashes are recorded in
-[compatibility/published-0.1.1.json](compatibility/published-0.1.1.json) and checked
-in CI. Repository documentation and tooling have been adapted for standalone
-use; those changes do not alter the files already published on either index.
+This checkout prepares **0.1.2rc1**, a release candidate for testing the public
+repository's publishing workflow. The stable **0.1.1** package remains available
+on PyPI and TestPyPI. The candidate's runtime files match that release byte for
+byte except for `__version__`; CI checks them against the recorded hashes in
+[compatibility/published-0.1.1.json](compatibility/published-0.1.1.json).
+
+Follow [WORKFLOW_TEST.md](WORKFLOW_TEST.md) to publish and install the candidate.
+Ordinary `pip install tazo-sdk` selects the stable release; test the candidate
+with an explicit `tazo-sdk==0.1.2rc1` pin after its publication.
 
 With the published package installed and `TAZO_API_KEY` set, run from this checkout:
 
@@ -247,7 +250,7 @@ dependencies are HTTPX, Pydantic, and websockets.
 
 | Directory | Contents |
 | --- | --- |
-| `src/tazo` | The typed synchronous and asynchronous SDK, unchanged from 0.1.1. |
+| `src/tazo` | The typed synchronous and asynchronous SDK; 0.1.2rc1 changes only the runtime version identifier. |
 | `examples` | Upload, streaming, durable replay smoke test, and four-mode verification with sample audio. |
 | `tests` | HTTP, streaming, public-contract, documentation, verification, and release-baseline tests. |
 | `api` | Public OpenAPI and AsyncAPI contracts used in compatibility tests. |
@@ -266,7 +269,8 @@ Maintainers moving publication to this repository should follow [SETUP.md](SETUP
 Existing users can continue installing `tazo-sdk==0.1.1`; no reinstall or new
 package release is needed because the source repository became public.
 Do not republish 0.1.1. The release workflow rejects already-published 0.1.0
-and 0.1.1; the next normal release can be 0.1.2 after its version bump and review.
+and 0.1.1. Use [the release-candidate checklist](WORKFLOW_TEST.md) to test the new
+workflow with 0.1.2rc1. A later stable release can use 0.1.2 after review.
 
 See [RELEASING.md](RELEASING.md) for future releases. API v1 and SDK versions are
 independent. This beta may change its Python interface before 1.0; changes are
