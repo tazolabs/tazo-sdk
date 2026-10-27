@@ -1,0 +1,25 @@
+{
+  "version": "0.1.1",
+  "artifacts": {
+    "pypi": {
+      "filename": "tazo_sdk-0.1.1-py3-none-any.whl",
+      "sha256": "ae239618429aa2744d802e1514730b41bdc17a3c43f15fdf72660fbb7a556960"
+    },
+    "testpypi": {
+      "filename": "tazo_sdk-0.1.1-py3-none-any.whl",
+      "sha256": "ae239618429aa2744d802e1514730b41bdc17a3c43f15fdf72660fbb7a556960"
+    }
+  },
+  "runtime_files": {
+    "tazo/_version.py": "ae739b3e3b817044ada923b44ba82c752fe8b7c2133908d58fff8fd4b5146298",
+    "tazo/_http.py": "0e6100d3de5ee3c9b945d2decf75b21242bb1daf43da974c7dcaa0d89b311225",
+    "tazo/client.py": "fe434711a4070b36d2f1dbc75a2bf68bceb0476ada4008e064d5bb435ca01eb8",
+    "tazo/__init__.py": "8e6fe96928efb4403cca29ba71c8b6cc41fd37b96c1bbdec7fdd4f913a16a067",
+    "tazo/types.py": "32cd0e51c237cf4a15df3fd23e97519b9d0079086fa5b84dc0c87671c299f79f",
+    "tazo/_audio.py": "99299a599d2469b08d06a307fdbdcb4ed0bd80285b589d2ef7a2fa8b90d67972",
+    "tazo/py.typed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tazo/resources.py": "245ab707b1f45c6be6059c015f54866be81183fa9db5e45aea55b79eb990cc8f",
+    "tazo/errors.py": "054414154ee4ecb030877461ad93fd4563d226a1a625dc17813be006d08e7224",
+    "tazo/streaming.py": "1320939625f9fb9c5d91811d75e12a1b9df8deb373b8a266524870a734b8bd2e"
+  }
+}

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tazo-sdk"
+version = "0.1.1"
+description = "The Python SDK for Tazo audio decisions."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Tazo Labs" }]
+dependencies = [
+    "httpx>=0.27,<1",
+    "pydantic>=2.10,<3",
+    "websockets>=15,<18",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://tazolabs.com"
+Documentation = "https://docs.tazolabs.com/sdk/python/overview"
+Source = "https://github.com/tazolabs/tazo-sdk"
+Issues = "https://github.com/tazolabs/tazo-sdk/issues"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "pyyaml>=6,<7", "types-PyYAML>=6,<7", "aiohttp>=3.11,<4"]
+docs = ["sphinx>=8,<10"]
+release = ["twine>=6,<7"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tazo"]
+core-metadata-version = "2.4"
+
+[tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src/tazo"]

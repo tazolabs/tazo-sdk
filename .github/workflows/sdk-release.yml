@@ -1,0 +1,71 @@
+name: Release Python SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Publish a new reviewed version to TestPyPI first, then PyPI
+        required: true
+        type: choice
+        options: [testpypi, pypi]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-release-${{ github.ref }}-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: '0.9.17'
+      - name: Verify new version and matching release tag
+        run: python scripts/check_release.py
+      - name: Require the tagged commit to be on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - run: uv build --no-sources
+      - run: uv export --frozen --no-default-groups --group dev --group release --no-emit-project --no-hashes --output-file sdk-requirements.txt
+      - name: Test the exact wheel to publish
+        shell: bash
+        run: |
+          uv pip install --system -r sdk-requirements.txt dist/tazo_sdk-*.whl
+          python -m twine check dist/*
+          python -m pytest -q
+          mypy src/tazo examples
+          ruff check .
+          ruff format --check .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-distributions
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.target }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-distributions
+          path: dist/
+      - name: Publish to TestPyPI
+        if: inputs.target == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+      - name: Publish to PyPI
+        if: inputs.target == 'pypi'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1

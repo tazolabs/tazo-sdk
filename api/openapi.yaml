@@ -1,0 +1,530 @@
+openapi: 3.1.0
+info:
+  title: Tazo API
+  version: 0.1.0
+  description: >-
+    Turn spoken audio into typed decisions. Send audio and questions, and get
+    probability-backed answers.
+servers:
+  - url: https://api.tazolabs.com
+    description: Production
+security:
+  - bearerAuth: []
+tags:
+  - name: Decisions
+  - name: Models
+  - name: Health
+paths:
+  /v1/decisions:
+    post:
+      tags: [Decisions]
+      operationId: createDecision
+      summary: Take decision
+      description: >-
+        Sends audio and a set of questions, and waits for the typed answers.
+        The request is persisted before processing. If the caller disconnects
+        or the wait times out, processing continues.
+      security:
+        - bearerAuth: []
+        - accessToken: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          description: >-
+            Retain one key per operation and reuse it with identical JSON, audio,
+            and content type for retries. Keys are scoped to the authenticated account.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      x-codeSamples:
+        - lang: python
+          label: Python SDK
+          source: |
+            from pathlib import Path
+            from tazo import Tazo
+
+            with Tazo() as client:
+                result = client.decisions.create(
+                    audio=Path("request.wav"),
+                    state="Choose an action.",
+                    questions={"action": {
+                        "type": "choice",
+                        "instructions": "Which action should be taken?",
+                        "criteria": {"get_weather": "Get weather.", "NO_TOOL": "No tool needed."},
+                    }},
+                )
+                print(result.answers["action"])
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [request, audio]
+              properties:
+                request:
+                  $ref: "#/components/schemas/DecisionRequest"
+                audio:
+                  type: string
+                  format: binary
+                  description: One audio file, up to 16 MB.
+            encoding:
+              request:
+                contentType: application/json
+      responses:
+        "200":
+          description: The decision completed.
+          headers:
+            X-Tazo-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionResponse"
+              example:
+                id: dec_example
+                model: tazo-large
+                answers:
+                  action:
+                    type: choice
+                    choice: get_weather
+                    probabilities:
+                      NO_TOOL: 0.08
+                      get_weather: 0.92
+                    confidence: 0.92
+                usage:
+                  audio_seconds: 2.4
+                elapsed_ms: 52.0
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "400":
+          description: Invalid Idempotency-Key; provide 1 to 256 nonblank characters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The Idempotency-Key was already used with different input (`idempotency_conflict`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown model (`model_not_found`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: The audio is over 16 MB (`audio_too_large`), or the request is too large to persist (`request_too_large`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            The `request` JSON does not match the v1 contract (`invalid_request`),
+            its combined text exceeds 1,000 characters (`request_text_too_long`),
+            or the model rejected it (`model_rejected_request`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: >-
+            The account has 5 queued or running requests for this model
+            (`concurrent_requests_exceeded`) or has admitted 100 requests in the
+            rolling minute (`requests_per_minute_exceeded`). Rejected requests
+            consume no allowance. Retry after the indicated delay.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying.
+              schema:
+                type: integer
+                minimum: 1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: The model failed or returned an invalid response (`model_runtime_error`, `runtime_contract_violation`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: >-
+            The inference service or durable execution service is unavailable
+            (`tazo_unavailable`, `durable_execution_unavailable`). For
+            `durable_execution_unavailable`, the request may already have been
+            accepted. Reuse the original Idempotency-Key to recover safely.
+            Without a key, retrying can create another request and retryable is false.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "504":
+          description: >-
+            The inference service timed out (`tazo_timeout`), or the decision is
+            still processing (`decision_pending`). For a pending decision,
+            `X-Tazo-Request-Id` and `request_id` identify it, and processing
+            continues. With the same Idempotency-Key and input, retrying retrieves
+            the same operation and retryable is true. Without a key, retrying
+            creates another request and retryable is false.
+          headers:
+            X-Tazo-Request-Id:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/models:
+    get:
+      tags: [Models]
+      operationId: listModels
+      summary: List models
+      x-codeSamples:
+        - lang: python
+          label: Python SDK
+          source: |
+            from tazo import Tazo
+
+            with Tazo() as client:
+                result = client.models.list()
+                print(result.models)
+      description: Lists the available models, their capabilities, and whether each is ready.
+      security:
+        - bearerAuth: []
+        - accessToken: []
+      responses:
+        "200":
+          description: The model list. `tazo-large` is listed first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [models]
+                properties:
+                  models:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Model"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          description: The model runtime returned an invalid response (`runtime_contract_violation`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: One or more models are unavailable (`tazo_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /healthz:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check readiness
+      x-codeSamples:
+        - lang: python
+          label: Python SDK
+          source: |
+            from tazo import Tazo
+
+            with Tazo() as client:
+                print(client.health.check().status)
+      description: Reports whether Tazo is ready. This endpoint is public.
+      security: []
+      responses:
+        "200":
+          description: Ready.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "503":
+          description: Not ready.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [unavailable]
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: An API key (`tazo_sk_...`). Also accepts a sign-in access token.
+    accessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A signed-in user's OIDC access token.
+  headers:
+    RequestId:
+      description: Identifier of the persisted request.
+      schema:
+        type: string
+  responses:
+    Unauthorized:
+      description: >-
+        The credential is missing (`missing_access_token`) or invalid
+        (`invalid_access_token`, `invalid_api_key`).
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            enum: [Bearer]
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, retryable]
+          properties:
+            code:
+              type: string
+              description: Stable machine-readable code. Branch on this, not `message`.
+              example: model_not_found
+            message:
+              type: string
+              example: "Unknown model. Choose 'tazo-large' or 'tazo-small'."
+            retryable:
+              type: boolean
+              description: Whether repeating the same request can succeed.
+        request_id:
+          type: string
+          description: Present on `decision_pending` responses.
+    StructuredValue:
+      description: A string, a JSON object, or a list of strings.
+      oneOf:
+        - type: string
+        - type: object
+          additionalProperties: true
+        - type: array
+          items:
+            type: string
+    DecisionRequest:
+      type: object
+      description: State, question instructions, and criteria share a 1,000-character budget. See the Limits guide for counting rules.
+      additionalProperties: false
+      required: [state, questions]
+      properties:
+        model:
+          type: string
+          default: tazo-large
+          description: >-
+            `tazo-large` or `tazo-small`. Legacy model IDs and the previous
+            `general` and `specialised` aliases are still accepted.
+          example: tazo-large
+        state:
+          allOf:
+            - $ref: "#/components/schemas/StructuredValue"
+          description: Context shared by all questions.
+          example:
+            context: Choose the tool matching the spoken request.
+        questions:
+          type: object
+          minProperties: 1
+          description: Map of caller-chosen question ID to question.
+          additionalProperties:
+            $ref: "#/components/schemas/Question"
+          example:
+            action:
+              type: choice
+              instructions: Which action should be taken?
+              criteria:
+                NO_TOOL: Respond directly without calling a tool.
+                get_weather: Get weather for a city.
+    Question:
+      oneOf:
+        - $ref: "#/components/schemas/ChoiceQuestion"
+        - $ref: "#/components/schemas/NoulQuestion"
+    ChoiceQuestion:
+      type: object
+      additionalProperties: false
+      required: [type, instructions, criteria]
+      properties:
+        type:
+          type: string
+          enum: [choice]
+        instructions:
+          $ref: "#/components/schemas/StructuredValue"
+        criteria:
+          type: object
+          minProperties: 2
+          maxProperties: 255
+          description: Map of choice ID to description. Choice IDs must not be blank.
+          additionalProperties:
+            oneOf:
+              - $ref: "#/components/schemas/StructuredValue"
+              - type: "null"
+    NoulQuestion:
+      type: object
+      additionalProperties: false
+      required: [type, instructions]
+      properties:
+        type:
+          type: string
+          enum: [noul]
+        instructions:
+          $ref: "#/components/schemas/StructuredValue"
+        criteria:
+          description: Optional descriptions for true and false; include both when supplied.
+          oneOf:
+            - type: "null"
+            - type: object
+              additionalProperties: false
+              required: ["true", "false"]
+              properties:
+                "true":
+                  oneOf:
+                    - $ref: "#/components/schemas/StructuredValue"
+                    - type: "null"
+                "false":
+                  oneOf:
+                    - $ref: "#/components/schemas/StructuredValue"
+                    - type: "null"
+    DecisionResponse:
+      type: object
+      required: [id, model, answers, usage, elapsed_ms]
+      properties:
+        id:
+          type: string
+          pattern: "^dec_[A-Za-z0-9_-]+$"
+          example: dec_example
+        model:
+          type: string
+          description: The public model name.
+          example: tazo-large
+        answers:
+          type: object
+          description: Answers keyed by the question IDs you supplied.
+          additionalProperties:
+            $ref: "#/components/schemas/Answer"
+        usage:
+          type: object
+          required: [audio_seconds]
+          properties:
+            audio_seconds:
+              type: number
+              minimum: 0
+              example: 2.4
+            input_tokens:
+              type: integer
+              minimum: 0
+              nullable: true
+            output_tokens:
+              type: integer
+              minimum: 0
+              nullable: true
+        elapsed_ms:
+          type: number
+          minimum: 0
+          example: 52.0
+    Answer:
+      oneOf:
+        - $ref: "#/components/schemas/ChoiceAnswer"
+        - $ref: "#/components/schemas/NoulAnswer"
+    NoulAnswer:
+      type: object
+      required: [type, noul]
+      properties:
+        type:
+          type: string
+          enum: [noul]
+        noul:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Probability that the statement is true.
+    ChoiceAnswer:
+      type: object
+      required: [type, choice, probabilities, confidence]
+      properties:
+        type:
+          type: string
+          enum: [choice]
+        choice:
+          type: string
+          description: The selected choice ID.
+          example: get_weather
+        probabilities:
+          type: object
+          description: Probability for each choice ID. Values sum to 1.
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
+          example:
+            NO_TOOL: 0.08
+            get_weather: 0.92
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: The probability of the selected choice.
+          example: 0.92
+    Model:
+      type: object
+      required: [id, display_name, description, contract, capabilities, ready]
+      properties:
+        id:
+          type: string
+          enum: [tazo-large, tazo-small]
+        display_name:
+          type: string
+          example: Tazo Large
+        description:
+          type: string
+        contract:
+          type: string
+          enum: [typed-decisions-v1]
+        capabilities:
+          $ref: "#/components/schemas/ModelCapabilities"
+        ready:
+          type: boolean
+    ModelCapabilities:
+      type: object
+      required: [question_types, max_questions]
+      properties:
+        question_types:
+          type: array
+          items:
+            type: string
+            description: Supported question types; current public models advertise choice and/or noul.
+        max_questions:
+          type: integer
+          minimum: 1
+        max_choice_options:
+          type: integer
+          minimum: 2
+          nullable: true
+        requires_no_tool_choice:
+          type: boolean
+        max_audio_seconds:
+          type: number
+          nullable: true
+        required_sample_rate_hz:
+          type: integer
+          nullable: true
