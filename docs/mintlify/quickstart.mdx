@@ -1,0 +1,50 @@
+---
+title: Python quickstart
+description: Upload audio, read a typed answer, and discover models.
+---
+
+Follow [installation](/sdk/python/overview) and set `TAZO_API_KEY` first.
+
+```python
+from pathlib import Path
+from tazo import Tazo
+
+with Tazo() as client:
+    result = client.decisions.create(
+        audio=Path("request.wav"),
+        state="Choose the action matching the spoken request.",
+        questions={
+            "action": {
+                "type": "choice",
+                "instructions": "Which action should be taken?",
+                "criteria": {
+                    "get_weather": "Get weather for a city.",
+                    "NO_TOOL": "No tool is needed.",
+                },
+            }
+        },
+    )
+    answer = result.answers["action"]
+    if answer.type == "choice":
+        print(answer.choice, answer.confidence, answer.probabilities)
+    print(result.request_id, result.idempotency_key)
+```
+
+`model` defaults to `tazo-large`. The result is typed; additional response fields
+are retained for compatibility. `request_id` comes from the response header and
+`idempotency_key` identifies this SDK operation. Both are SDK metadata and are
+excluded from `model_dump()`.
+
+```python
+from tazo import Tazo
+
+with Tazo() as client:
+    print(client.health.check().status)
+    for model in client.models.list().models:
+        print(model.id, model.ready, model.capabilities.question_types)
+```
+
+Health sends no bearer credential and works without an API key. The documented
+unhealthy response returns `status="unavailable"`; network failures still raise
+an exception. See [uploaded decisions](/sdk/python/uploads) for file inputs and
+[errors](/sdk/python/errors) before adding your own retry loop.

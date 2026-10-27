@@ -1,0 +1,47 @@
+---
+title: Errors and retries
+description: Handle pending operations and retry without duplicating decisions.
+---
+
+The SDK creates one UUID idempotency key per `decisions.create()` invocation.
+Every automatic attempt reuses it and the original request snapshot. A separate
+method call creates a new operation unless you supply the retained key.
+
+```python
+from pathlib import Path
+from uuid import uuid4
+from tazo import DecisionPendingError, RateLimitError, Tazo
+
+key = str(uuid4())  # Persist with the original input before sending.
+questions = {"action": {
+    "type": "choice", "instructions": "Which action should be taken?",
+    "criteria": {"get_weather": "Get weather.", "NO_TOOL": "No tool needed."},
+}}
+with Tazo() as client:
+    try:
+        result = client.decisions.create(
+            audio=Path("request.wav"), state="Choose an action.",
+            questions=questions, idempotency_key=key,
+        )
+    except DecisionPendingError as error:
+        print(error.request_id, error.idempotency_key)
+        # Later: retry create with this key and identical input and MIME type.
+    except RateLimitError as error:
+        print(error.retry_after)
+```
+
+Default `max_retries=2` means at most three HTTP attempts. Retryable service
+and network failures use backoff with jitter; `Retry-After` is honored within the
+remaining retry budget. Authentication, invalid input, conflict, and oversized
+upload failures are not retried. Explicit `retryable: false` is respected.
+
+`504 decision_pending` means accepted work continues. When retries stop, retain
+the key and original audio, JSON, and content type to recover later. There is no
+job-status endpoint. Changing input with the same key raises
+`IdempotencyConflictError`. A timeout or cancellation does not prove rejection.
+
+All SDK exceptions derive from `TazoError`. HTTP exceptions expose status, code,
+request ID, idempotency key, retryability, and retry delay where available.
+`ProtocolError` reports an invalid server response. `StreamingError` exposes the
+server error code or an unexpected-disconnect code, plus a close code when known.
+Never put credentials, audio, or prompts into application error logs.

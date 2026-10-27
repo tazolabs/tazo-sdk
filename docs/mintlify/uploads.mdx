@@ -1,0 +1,39 @@
+---
+title: Uploaded decisions
+description: File inputs, typed questions, model capabilities, and operation recovery.
+---
+
+`decisions.create` builds the multipart upload automatically. Pass `audio`,
+`state`, and `questions` as keyword arguments. `model` defaults to `tazo-large`.
+
+| Audio input | Behavior |
+| --- | --- |
+| String or `Path` | SDK opens and closes the file. |
+| Bytes | Pass `filename` and `content_type` when known. |
+| Binary file object | Read from its current position; never closed by the SDK. |
+
+Seekable streams are restored to their original position. Nonseekable streams
+are consumed once. The SDK buffers one immutable upload of at most **16 MiB**
+so every retry uses identical audio, JSON, and MIME type. Model duration limits
+still apply. The SDK imposes no playground word-count restrictions.
+
+Questions can be dictionaries, as in the [quickstart](/sdk/python/quickstart),
+or typed models:
+
+```python
+from tazo import ChoiceQuestion, NoulQuestion
+
+choice = ChoiceQuestion(
+    instructions="Which action should be taken?",
+    criteria={"get_weather": "Get weather.", "NO_TOOL": "No tool needed."},
+)
+yes_no = NoulQuestion(instructions="Is the speaker asking for help?")
+```
+
+Tazo Large supports one `choice` or `noul`; Tazo Small supports one `choice`
+with `NO_TOOL`. Check `client.models.list()` for current capabilities. This SDK
+does not expose score questions.
+
+Each create call generates a new operation key. Supply `idempotency_key` to
+resume an earlier operation with its original input. The SDK does not expose a
+job-status API. Read [retries and pending work](/sdk/python/errors).

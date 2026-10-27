@@ -1,0 +1,44 @@
+---
+title: Configuration
+description: Credentials, timeouts, connection ownership, and custom endpoints.
+---
+
+Both clients accept these keyword arguments:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `api_key` | `TAZO_API_KEY` | Bearer credential; optional for health. |
+| `base_url` | `https://api.tazolabs.com` | HTTP origin; omit `/v1`. Path-prefixed proxies work. |
+| `timeout` | Connect 5, read 65, write 30, pool 5 seconds | Float or `httpx.Timeout`. |
+| `max_retries` | `2` | Additional HTTP attempts. |
+| `operation_timeout` | `180` seconds | HTTP retry budget, excluding upload snapshotting. |
+| `http_client` | SDK-owned pool | Optional caller-owned HTTPX client of the matching sync/async type. |
+
+```python
+import httpx
+from tazo import Tazo
+
+with Tazo(
+    timeout=httpx.Timeout(connect=5, read=90, write=30, pool=5),
+    max_retries=1,
+    operation_timeout=120,
+) as client:
+    print(client.health.check().status)
+```
+
+Each HTTP phase is capped by the remaining retry budget. A synchronous
+in-flight response may exceed that budget across multiple phases or incoming
+body chunks. Async HTTP additionally enforces a hard per-attempt deadline within
+the remaining budget. Read timeout is intentionally longer than the service's
+usual durable wait. Accepted work may continue after either timeout.
+For a direct-inference development server without persisted idempotency, set
+`max_retries=0`; safe replay requires durable idempotency on the target.
+
+Streaming has a separate `event_timeout` (65 seconds by default), a 5-second
+connection timeout, and a 2-second close timeout. The websocket URL is derived
+from `base_url` using ws/wss. HTTP redirects are not followed.
+
+Use `with Tazo()` / `async with AsyncTazo()` or explicitly close clients.
+Injected HTTPX clients remain caller-owned. Avoid default auth headers on an
+injected client when health must remain unauthenticated. Close all streaming
+contexts before the parent client. The SDK never runs a hidden event loop.

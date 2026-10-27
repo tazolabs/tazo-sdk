@@ -1,0 +1,38 @@
+---
+title: Python SDK
+description: Typed sync and async clients for uploaded decisions, streaming, models, and health.
+---
+
+Use the [Tazo agent skill](/guides/agent-skill) to have your coding agent set up
+the SDK, write an integration, or verify uploads and streaming.
+
+Requires **Python 3.11+**. Install [tazo-sdk from PyPI](https://pypi.org/project/tazo-sdk/):
+
+```bash
+python -m pip install tazo-sdk
+export TAZO_API_KEY="your-api-key"
+```
+
+Sign in to the [Tazo console](https://app.tazolabs.com), open **API keys**, and
+create a key. Set `TAZO_API_KEY` to the complete key, including its `tazo_sk_`
+prefix. The SDK reads this variable or accepts `Tazo(api_key="...")`. Keep the
+key in an environment variable or secret manager. The SDK supports exactly four
+public operations:
+
+| Method | API |
+| --- | --- |
+| `client.decisions.create(...)` | Uploaded audio decisions |
+| `client.decisions.stream(...)` | WebSocket decisions |
+| `client.models.list()` | Model discovery |
+| `client.health.check()` | Unauthenticated readiness |
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/sdk/python/quickstart">Make an uploaded decision.</Card>
+  <Card title="Streaming" icon="waveform" href="/sdk/python/streaming">Send audio and receive decisions concurrently.</Card>
+</CardGroup>
+
+API v1 and SDK versions are independent. This SDK is a beta before 1.0. See the
+[changelog](/sdk/python/changelog), [errors and retries](/sdk/python/errors), and
+[configuration](/sdk/python/configuration). HTTP endpoint pages offer a
+**Python SDK** sample alongside direct HTTP examples. Samples are displayed as
+code; the API playground does not run Python in the browser.

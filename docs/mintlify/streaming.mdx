@@ -1,0 +1,71 @@
+---
+title: Python streaming
+description: Send a PCM16 recording while receiving typed decision events.
+---
+
+Open a managed session, send audio in one task, and receive in another. The
+context manager sends authentication and waits for `session.ready` automatically.
+
+```python
+import asyncio
+from tazo import AsyncTazo, wav_chunks
+
+async def stream_audio():
+    async with AsyncTazo() as client:
+        async with client.decisions.stream(
+            state="Choose an action.",
+            questions={"action": {
+                "type": "choice",
+                "instructions": "Which action should be taken?",
+                "criteria": {"get_weather": "Get weather.", "NO_TOOL": "No tool needed."},
+            }},
+            audio_scope="turn",
+        ) as session:
+            print(session.ready.max_turn_audio_ms)
+
+            async def send():
+                for chunk in wav_chunks("request.wav"):
+                    await asyncio.sleep(len(chunk) / 32000)
+                    await session.send_audio(chunk)
+                await session.commit()
+
+            async def receive():
+                async for event in session:
+                    if event.type in {"decision.updated", "decision.finalized"}:
+                        print(event.model_dump())
+                    if event.type == "decision.finalized":
+                        await session.finish()
+
+            async with asyncio.TaskGroup() as group:
+                group.create_task(send())
+                group.create_task(receive())
+
+asyncio.run(stream_audio())
+```
+
+`wav_chunks` validates mono, 16 kHz, PCM16 WAV files and emits raw samples without
+headers. Its default chunk is 100 ms. It neither resamples nor paces audio; the
+example adds microphone-speed pacing. Divide recordings into turns within
+`session.ready.max_turn_audio_ms`. Sending faster does not guarantee lower latency.
+
+`audio_scope="turn"` evaluates cumulative audio. `chunk` evaluates new audio
+only; its final event covers the last window rather than summarizing the turn.
+`evaluation_interval_ms` accepts an integer from 100 to 30000; omission uses the
+server default. Each evaluation shares the account's inference allowance.
+
+| Method | Required acknowledgement before more audio |
+| --- | --- |
+| `await session.commit()` | Consume `decision.finalized`. |
+| `await session.update(state=..., questions=...)` | Between turns; consume `session.updated`. |
+| `await session.finish()` | Consume remaining events through `session.closed`. |
+
+Only one task may receive. Bounded websocket queues apply backpressure; there is
+no unbounded SDK audio queue. Normal errors appear as `ErrorEvent`; fatal errors
+raise `StreamingError`. Unknown future events are preserved as `UnknownEvent`.
+Unexpected disconnects are never automatically reconnected or replayed.
+
+The synchronous client offers the same session methods without `await`; use a
+sender thread while the main thread iterates. Propagate producer failures and
+close the session to unblock its receiver. Close streaming contexts before their
+parent client. Context exit closes immediately and does not cancel accepted work.
+See the [protocol reference](/api-reference/streaming/decisions).

@@ -1,0 +1,30 @@
+---
+title: Async usage
+description: Native async requests, application lifetimes, and cancellation.
+---
+
+Use `AsyncTazo` in an asynchronous application. It has the same configuration
+and resource names as `Tazo`.
+
+```python
+import asyncio
+from tazo import AsyncTazo
+
+async def main():
+    async with AsyncTazo() as client:
+        result = await client.models.list()
+        print(result.models)
+        print((await client.health.check()).status)
+
+asyncio.run(main())
+```
+
+Await `decisions.create`, `models.list`, and `health.check`. Use `async with`
+for `decisions.stream`; the factory itself is not awaited. See the complete
+[streaming example](/sdk/python/streaming).
+
+Reuse a client for your application's lifetime, then `await client.close()` or
+exit its context. HTTP is natively asynchronous; upload file reads run in a
+worker thread. Cancellation closes a streaming socket but does not cancel
+accepted durable server work. Persist a caller-generated idempotency key before
+an upload if recovery across cancellation or process exit is required.

@@ -1,0 +1,12 @@
+{
+  "name": "tazo-sdk-docs",
+  "private": true,
+  "description": "Mintlify reference conversion for the Tazo Python SDK",
+  "scripts": {
+    "reference": "python scripts/sdk_reference.py",
+    "reference:check": "python scripts/sdk_reference.py --check"
+  },
+  "devDependencies": {
+    "@mintlify/scraping": "4.0.1161"
+  }
+}

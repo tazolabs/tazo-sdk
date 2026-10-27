@@ -1,0 +1,770 @@
+asyncapi: 3.0.0
+info:
+  title: Tazo streaming decisions
+  version: 1.0.0
+  description: Client-facing WebSocket protocol. Send operations describe messages from your application
+    to Tazo; receive operations describe messages from Tazo to your application. Authenticate in the first
+    session.start message. HTTP authorization headers alone do not start a session.
+defaultContentType: application/json
+servers:
+  production:
+    host: api.tazolabs.com
+    protocol: wss
+channels:
+  decisions:
+    address: /v1/decisions/stream
+    title: Stream decisions
+    description: Send audio and receive typed decisions over one WebSocket connection. The default audio
+      limit is 30 seconds per turn. Commit each turn and wait for decision.finalized before sending the
+      next.
+    servers:
+    - $ref: '#/servers/production'
+    messages:
+      sessionStart:
+        $ref: '#/components/messages/sessionStart'
+      audio:
+        $ref: '#/components/messages/audio'
+      sessionUpdate:
+        $ref: '#/components/messages/sessionUpdate'
+      inputCommit:
+        $ref: '#/components/messages/inputCommit'
+      inputFinish:
+        $ref: '#/components/messages/inputFinish'
+      sessionReady:
+        $ref: '#/components/messages/sessionReady'
+      sessionUpdated:
+        $ref: '#/components/messages/sessionUpdated'
+      decisionUpdated:
+        $ref: '#/components/messages/decisionUpdated'
+      decisionFinalized:
+        $ref: '#/components/messages/decisionFinalized'
+      sessionClosed:
+        $ref: '#/components/messages/sessionClosed'
+      error:
+        $ref: '#/components/messages/error'
+operations:
+  sendToTazo:
+    action: send
+    title: Send to Tazo
+    channel:
+      $ref: '#/channels/decisions'
+    messages:
+    - $ref: '#/channels/decisions/messages/sessionStart'
+    - $ref: '#/channels/decisions/messages/audio'
+    - $ref: '#/channels/decisions/messages/sessionUpdate'
+    - $ref: '#/channels/decisions/messages/inputCommit'
+    - $ref: '#/channels/decisions/messages/inputFinish'
+  receiveFromTazo:
+    action: receive
+    title: Receive from Tazo
+    channel:
+      $ref: '#/channels/decisions'
+    messages:
+    - $ref: '#/channels/decisions/messages/sessionReady'
+    - $ref: '#/channels/decisions/messages/sessionUpdated'
+    - $ref: '#/channels/decisions/messages/decisionUpdated'
+    - $ref: '#/channels/decisions/messages/decisionFinalized'
+    - $ref: '#/channels/decisions/messages/sessionClosed'
+    - $ref: '#/channels/decisions/messages/error'
+components:
+  messages:
+    sessionStart:
+      name: session.start
+      title: session.start
+      summary: Authenticate and configure the session. Wait for session.ready before sending audio.
+      payload:
+        $ref: '#/components/schemas/SessionStart'
+      examples:
+      - payload:
+          type: session.start
+          authorization: Bearer YOUR_API_KEY
+          model: tazo-large
+          audio_scope: chunk
+          evaluation_interval_ms: 500
+          state:
+            context: Choose the tool matching the spoken request.
+          questions:
+            action:
+              type: choice
+              instructions: Which action should be taken?
+              criteria:
+                NO_TOOL: Respond directly without calling a tool.
+                get_weather: Get weather for a city.
+          input_audio:
+            encoding: pcm_s16le
+            sample_rate_hz: 16000
+            channels: 1
+    sessionUpdate:
+      name: session.update
+      title: session.update
+      summary: Between turns, replace both state and questions. Wait for session.updated before sending
+        audio.
+      payload:
+        $ref: '#/components/schemas/SessionUpdate'
+      examples:
+      - payload:
+          type: session.update
+          state:
+            context: Choose the tool matching the spoken request.
+          questions:
+            action:
+              type: choice
+              instructions: Which action should be taken?
+              criteria:
+                NO_TOOL: Respond directly without calling a tool.
+                get_weather: Get weather for a city.
+    inputCommit:
+      name: input.commit
+      title: input.commit
+      summary: Complete the current turn. Wait for decision.finalized before sending more audio.
+      payload:
+        $ref: '#/components/schemas/InputCommit'
+      examples:
+      - payload:
+          type: input.commit
+    inputFinish:
+      name: input.finish
+      title: input.finish
+      summary: Complete pending audio and close the session.
+      payload:
+        $ref: '#/components/schemas/InputFinish'
+      examples:
+      - payload:
+          type: input.finish
+    sessionReady:
+      name: session.ready
+      title: session.ready
+      summary: The session is ready. Read the effective audio format, interval, scope, and limits.
+      payload:
+        $ref: '#/components/schemas/SessionReady'
+      examples:
+      - payload:
+          type: session.ready
+          session_id: ses_example
+          sequence: 1
+          model: tazo-large
+          config_revision: 1
+          input_audio:
+            encoding: pcm_s16le
+            sample_rate_hz: 16000
+            channels: 1
+          evaluation_interval_ms: 500
+          max_turn_audio_ms: 30000
+          max_audio_message_bytes: 6400
+          audio_scope: chunk
+    sessionUpdated:
+      name: session.updated
+      title: session.updated
+      summary: The replacement context and question were accepted.
+      payload:
+        $ref: '#/components/schemas/SessionUpdated'
+      examples:
+      - payload:
+          type: session.updated
+          session_id: ses_example
+          sequence: 4
+          config_revision: 2
+    decisionUpdated:
+      name: decision.updated
+      title: decision.updated
+      summary: A decision for the reported audio range while audio continues arriving.
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/StreamDecisionEvent'
+        - type: object
+          properties:
+            type:
+              const: decision.updated
+      examples:
+      - payload:
+          type: decision.updated
+          session_id: ses_example
+          sequence: 2
+          turn_id: turn_1
+          config_revision: 1
+          id: dec_example
+          model: tazo-large
+          audio_start_ms: 0
+          audio_end_ms: 500
+          answers:
+            action:
+              type: choice
+              choice: get_weather
+              probabilities:
+                NO_TOOL: 0.08
+                get_weather: 0.92
+              confidence: 0.92
+          usage:
+            audio_seconds: 0.5
+          elapsed_ms: 52.0
+    decisionFinalized:
+      name: decision.finalized
+      title: decision.finalized
+      summary: The turn is complete. In chunk mode this is the last chunk result, not a summary of the
+        turn.
+      payload:
+        allOf:
+        - $ref: '#/components/schemas/StreamDecisionEvent'
+        - type: object
+          properties:
+            type:
+              const: decision.finalized
+      examples:
+      - payload:
+          type: decision.finalized
+          session_id: ses_example
+          sequence: 3
+          turn_id: turn_1
+          config_revision: 1
+          id: dec_example
+          model: tazo-large
+          audio_start_ms: 0
+          audio_end_ms: 500
+          answers:
+            action:
+              type: choice
+              choice: get_weather
+              probabilities:
+                NO_TOOL: 0.08
+                get_weather: 0.92
+              confidence: 0.92
+          usage:
+            audio_seconds: 0.5
+          elapsed_ms: 52.0
+    sessionClosed:
+      name: session.closed
+      title: session.closed
+      summary: The server is closing the session after input.finish.
+      payload:
+        $ref: '#/components/schemas/SessionClosed'
+      examples:
+      - payload:
+          type: session.closed
+          session_id: ses_example
+          sequence: 4
+    error:
+      name: error
+      title: error
+      summary: An error occurred. A fatal error closes the connection.
+      payload:
+        $ref: '#/components/schemas/StreamError'
+      examples:
+      - payload:
+          type: error
+          session_id: ses_example
+          sequence: 3
+          fatal: true
+          error:
+            code: turn_too_long
+            message: The turn exceeds its audio limit; commit before sending more.
+    audio:
+      name: audio
+      title: Binary audio
+      contentType: application/octet-stream
+      summary: Send raw PCM16 little-endian audio, mono, 16 kHz, after session.ready.
+      description: Use binary WebSocket frames with an even byte count of 2 to 6400 bytes. A 100 ms chunk
+        is 3200 bytes. Send the samples directly, without JSON, base64 encoding, or file headers. Commit
+        before the turn limit.
+      payload:
+        type: string
+        format: binary
+        minLength: 2
+        maxLength: 6400
+  schemas:
+    ChoiceQuestion:
+      additionalProperties: false
+      properties:
+        type:
+          const: choice
+          title: Type
+          type: string
+        instructions:
+          anyOf:
+          - type: string
+          - additionalProperties: true
+            type: object
+          - items:
+              type: string
+            type: array
+          title: Instructions
+        criteria:
+          additionalProperties:
+            anyOf:
+            - type: string
+            - additionalProperties: true
+              type: object
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          maxProperties: 255
+          minProperties: 2
+          title: Criteria
+          type: object
+      required:
+      - type
+      - instructions
+      - criteria
+      title: ChoiceQuestion
+      type: object
+    NoulQuestion:
+      additionalProperties: false
+      properties:
+        type:
+          const: noul
+          title: Type
+          type: string
+        instructions:
+          anyOf:
+          - type: string
+          - additionalProperties: true
+            type: object
+          - items:
+              type: string
+            type: array
+          title: Instructions
+        criteria:
+          anyOf:
+          - additionalProperties:
+              anyOf:
+              - type: string
+              - additionalProperties: true
+                type: object
+              - items:
+                  type: string
+                type: array
+              - type: 'null'
+            type: object
+          - type: 'null'
+          default: null
+          title: Criteria
+      required:
+      - type
+      - instructions
+      title: NoulQuestion
+      type: object
+    StreamAudioFormat:
+      additionalProperties: false
+      properties:
+        encoding:
+          const: pcm_s16le
+          default: pcm_s16le
+          title: Encoding
+          type: string
+        sample_rate_hz:
+          const: 16000
+          default: 16000
+          title: Sample Rate Hz
+          type: integer
+        channels:
+          const: 1
+          default: 1
+          title: Channels
+          type: integer
+      title: StreamAudioFormat
+      type: object
+    SessionStart:
+      additionalProperties: false
+      description: >-
+        Request text is limited to 1,000 characters; see the Limits guide.
+        Exceeding it returns fatal request_text_too_long and closes with code 1008.
+      properties:
+        model:
+          default: tazo-large
+          minLength: 1
+          title: Model
+          type: string
+        state:
+          anyOf:
+          - type: string
+          - additionalProperties: true
+            type: object
+          - items:
+              type: string
+            type: array
+          title: State
+        questions:
+          additionalProperties:
+            oneOf:
+            - $ref: '#/components/schemas/ChoiceQuestion'
+            - $ref: '#/components/schemas/NoulQuestion'
+          maxProperties: 1
+          minProperties: 1
+          title: Questions
+          type: object
+          description: Exactly one question. The selected model must support its type and options. Tazo
+            Small requires a NO_TOOL option.
+        type:
+          const: session.start
+          title: Type
+          type: string
+        authorization:
+          format: password
+          title: Authorization
+          type: string
+          writeOnly: true
+          description: Bearer API key or access token. Send in session.start within five seconds of connecting;
+            authentication is checked again when a new turn starts.
+        input_audio:
+          $ref: '#/components/schemas/StreamAudioFormat'
+        evaluation_interval_ms:
+          anyOf:
+          - maximum: 30000
+            minimum: 100
+            type: integer
+          - type: 'null'
+          default: null
+          title: Evaluation Interval Ms
+          description: Evaluation interval in milliseconds. The server default is 500; inference speed
+            also affects response timing.
+        audio_scope:
+          default: turn
+          enum:
+          - turn
+          - chunk
+          title: Audio Scope
+          type: string
+          description: chunk evaluates new audio only; turn evaluates all audio in the current turn.
+      required:
+      - state
+      - questions
+      - type
+      - authorization
+      title: SessionStart
+      type: object
+    SessionUpdate:
+      additionalProperties: false
+      description: >-
+        The session.start text limit applies. Exceeding it returns nonfatal
+        request_text_too_long and preserves the previous configuration and revision.
+      properties:
+        type:
+          const: session.update
+          title: Type
+          type: string
+        state:
+          anyOf:
+          - type: string
+          - additionalProperties: true
+            type: object
+          - items:
+              type: string
+            type: array
+          title: State
+        questions:
+          additionalProperties:
+            oneOf:
+            - $ref: '#/components/schemas/ChoiceQuestion'
+            - $ref: '#/components/schemas/NoulQuestion'
+          maxProperties: 1
+          minProperties: 1
+          title: Questions
+          type: object
+      required:
+      - type
+      - state
+      - questions
+      title: SessionUpdate
+      type: object
+    InputCommit:
+      additionalProperties: false
+      properties:
+        type:
+          const: input.commit
+          title: Type
+          type: string
+      required:
+      - type
+      title: InputCommit
+      type: object
+    InputFinish:
+      additionalProperties: false
+      properties:
+        type:
+          const: input.finish
+          title: Type
+          type: string
+      required:
+      - type
+      title: InputFinish
+      type: object
+    SessionReady:
+      additionalProperties: false
+      properties:
+        session_id:
+          title: Session Id
+          type: string
+        sequence:
+          minimum: 1
+          title: Sequence
+          type: integer
+        type:
+          const: session.ready
+          title: Type
+          type: string
+        model:
+          title: Model
+          type: string
+        config_revision:
+          minimum: 1
+          title: Config Revision
+          type: integer
+        input_audio:
+          $ref: '#/components/schemas/StreamAudioFormat'
+        evaluation_interval_ms:
+          exclusiveMinimum: 0
+          title: Evaluation Interval Ms
+          type: integer
+        max_turn_audio_ms:
+          exclusiveMinimum: 0
+          title: Max Turn Audio Ms
+          type: integer
+        max_audio_message_bytes:
+          exclusiveMinimum: 0
+          title: Max Audio Message Bytes
+          type: integer
+        audio_scope:
+          default: turn
+          enum:
+          - turn
+          - chunk
+          title: Audio Scope
+          type: string
+      required:
+      - session_id
+      - sequence
+      - type
+      - model
+      - config_revision
+      - input_audio
+      - evaluation_interval_ms
+      - max_turn_audio_ms
+      - max_audio_message_bytes
+      title: SessionReady
+      type: object
+    SessionUpdated:
+      additionalProperties: false
+      properties:
+        session_id:
+          title: Session Id
+          type: string
+        sequence:
+          minimum: 1
+          title: Sequence
+          type: integer
+        type:
+          const: session.updated
+          title: Type
+          type: string
+        config_revision:
+          minimum: 1
+          title: Config Revision
+          type: integer
+      required:
+      - session_id
+      - sequence
+      - type
+      - config_revision
+      title: SessionUpdated
+      type: object
+    ChoiceAnswer:
+      additionalProperties: false
+      properties:
+        type:
+          const: choice
+          title: Type
+          type: string
+        choice:
+          title: Choice
+          type: string
+        probabilities:
+          additionalProperties:
+            type: number
+          title: Probabilities
+          type: object
+        confidence:
+          maximum: 1
+          minimum: 0
+          title: Confidence
+          type: number
+      required:
+      - type
+      - choice
+      - probabilities
+      - confidence
+      title: ChoiceAnswer
+      type: object
+    NoulAnswer:
+      additionalProperties: false
+      properties:
+        type:
+          const: noul
+          title: Type
+          type: string
+        noul:
+          maximum: 1
+          minimum: 0
+          title: Noul
+          type: number
+      required:
+      - type
+      - noul
+      title: NoulAnswer
+      type: object
+    Usage:
+      additionalProperties: false
+      properties:
+        audio_seconds:
+          minimum: 0
+          title: Audio Seconds
+          type: number
+        input_tokens:
+          anyOf:
+          - minimum: 0
+            type: integer
+          - type: 'null'
+          default: null
+          title: Input Tokens
+        output_tokens:
+          anyOf:
+          - minimum: 0
+            type: integer
+          - type: 'null'
+          default: null
+          title: Output Tokens
+      required:
+      - audio_seconds
+      title: Usage
+      type: object
+    StreamDecisionEvent:
+      additionalProperties: false
+      properties:
+        session_id:
+          title: Session Id
+          type: string
+        sequence:
+          minimum: 1
+          title: Sequence
+          type: integer
+        id:
+          pattern: ^dec_[A-Za-z0-9_-]+$
+          title: Id
+          type: string
+        model:
+          title: Model
+          type: string
+        answers:
+          additionalProperties:
+            oneOf:
+            - $ref: '#/components/schemas/ChoiceAnswer'
+            - $ref: '#/components/schemas/NoulAnswer'
+          minProperties: 1
+          title: Answers
+          type: object
+        usage:
+          $ref: '#/components/schemas/Usage'
+        elapsed_ms:
+          minimum: 0
+          title: Elapsed Ms
+          type: number
+        type:
+          enum:
+          - decision.updated
+          - decision.finalized
+          title: Type
+          type: string
+        turn_id:
+          title: Turn Id
+          type: string
+        config_revision:
+          minimum: 1
+          title: Config Revision
+          type: integer
+        audio_start_ms:
+          default: 0
+          minimum: 0
+          title: Audio Start Ms
+          type: number
+        audio_end_ms:
+          minimum: 0
+          title: Audio End Ms
+          type: number
+      required:
+      - session_id
+      - sequence
+      - id
+      - model
+      - answers
+      - usage
+      - elapsed_ms
+      - type
+      - turn_id
+      - config_revision
+      - audio_end_ms
+      title: StreamDecisionEvent
+      type: object
+    SessionClosed:
+      additionalProperties: false
+      properties:
+        session_id:
+          title: Session Id
+          type: string
+        sequence:
+          minimum: 1
+          title: Sequence
+          type: integer
+        type:
+          const: session.closed
+          title: Type
+          type: string
+      required:
+      - session_id
+      - sequence
+      - type
+      title: SessionClosed
+      type: object
+    StreamErrorDetail:
+      additionalProperties: false
+      properties:
+        code:
+          title: Code
+          type: string
+        message:
+          title: Message
+          type: string
+      required:
+      - code
+      - message
+      title: StreamErrorDetail
+      type: object
+    StreamError:
+      additionalProperties: false
+      properties:
+        type:
+          const: error
+          title: Type
+          type: string
+        session_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Session Id
+        sequence:
+          anyOf:
+          - minimum: 1
+            type: integer
+          - type: 'null'
+          default: null
+          title: Sequence
+        error:
+          $ref: '#/components/schemas/StreamErrorDetail'
+        fatal:
+          title: Fatal
+          type: boolean
+      required:
+      - type
+      - error
+      - fatal
+      title: StreamError
+      type: object
