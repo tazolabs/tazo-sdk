@@ -61,7 +61,7 @@ class Audio:
         return len(self.pcm) / 32
 
     def chunks(self, ready: SessionReady) -> Iterator[bytes]:
-        if self.duration_ms > ready.max_turn_audio_ms:
+        if ready.max_turn_audio_ms is not None and self.duration_ms > ready.max_turn_audio_ms:
             raise ValueError("Audio exceeds the streaming turn limit; use a shorter recording.")
         size = min(3200, ready.max_audio_message_bytes // 2 * 2)
         if size < 2:

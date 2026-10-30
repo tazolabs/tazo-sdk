@@ -206,7 +206,7 @@ class SessionReady(SessionEvent):
     config_revision: int = Field(ge=1)
     input_audio: AudioFormat
     evaluation_interval_ms: int = Field(gt=0)
-    max_turn_audio_ms: int = Field(gt=0)
+    max_turn_audio_ms: int | None = Field(gt=0)
     max_audio_message_bytes: int = Field(gt=0)
     audio_scope: Literal["turn", "chunk"]
 

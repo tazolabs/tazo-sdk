@@ -3,8 +3,10 @@ import importlib.metadata
 from pathlib import Path
 
 import yaml
+from conftest import ready
 
 from tazo import Tazo
+from tazo.types import SessionReady
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -87,3 +89,15 @@ def test_sdk_has_no_backend_dependency_and_version_matches():
                 in {"tazo_api", "tazo_runtime", "tazo_contracts", "boto3", "numpy", "fastapi"}
                 for name in imports
             )
+
+
+def test_streaming_duration_limit_matches_nullable_public_contract():
+    spec = yaml.safe_load((ROOT / "api/asyncapi.yaml").read_text())
+    schemas = spec["components"]["schemas"]
+    assert schemas["SessionStart"]["properties"]["audio_scope"]["default"] == "chunk"
+    wire_limit = schemas["SessionReady"]["properties"]["max_turn_audio_ms"]
+    sdk_limit = SessionReady.model_json_schema()["properties"]["max_turn_audio_ms"]
+    for schema in (wire_limit, sdk_limit):
+        assert {option["type"] for option in schema["anyOf"]} == {"integer", "null"}
+    assert SessionReady.model_validate(ready(max_turn_audio_ms=None)).max_turn_audio_ms is None
+    assert SessionReady.model_validate(ready(max_turn_audio_ms=30000)).max_turn_audio_ms == 30000

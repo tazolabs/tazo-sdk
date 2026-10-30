@@ -60,7 +60,10 @@ async def run_smoke(client: AsyncTazo, audio: Path) -> None:
         async with client.decisions.stream(
             state="Choose an action.", questions=QUESTIONS, model=model_id
         ) as session:
-            if duration_ms > session.ready.max_turn_audio_ms:
+            if (
+                session.ready.max_turn_audio_ms is not None
+                and duration_ms > session.ready.max_turn_audio_ms
+            ):
                 raise RuntimeError("Recording exceeds the streaming turn limit; use a shorter WAV.")
 
             async def send() -> None:

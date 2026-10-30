@@ -13,13 +13,17 @@ Both clients also check health and model discovery. Cases run sequentially and
 submit real inference work. The target's account limits apply. Streaming audio is
 paced at recording speed, uses the negotiated message limit, and must produce a
 final decision covering the complete recording followed by `session.closed`.
+It explicitly requests `audio_scope="turn"` for that check. The SDK default is
+`chunk`, whose final decision covers the latest window; `smoke.py` exercises
+that default and accepts a `None` turn-duration limit.
 
 ## Run against the PyPI package
 
 Use Python 3.11 or newer, a virtual environment with the SDK version you are
 verifying installed, and a key created in the [Tazo console](https://app.tazolabs.com).
-The stable release is `tazo-sdk==0.1.1`; see [WORKFLOW_TEST.md](../WORKFLOW_TEST.md)
-for testing the prepared `0.1.2rc1` release candidate from TestPyPI or PyPI.
+This checkout prepares `tazo-sdk==0.1.2`; see [RELEASING.md](../RELEASING.md)
+for publishing and testing it from TestPyPI and PyPI. Install that exact version
+after publication to verify these streaming changes.
 Run directly with that environment's Python from the repository root:
 
 ```sh
@@ -62,6 +66,5 @@ individual operations and durable idempotency replay checks.
 
 Keep the JSON report locally if needed and revoke temporary test keys when
 finished. Source code and future releases are maintained in
-[tazolabs/tazo-sdk](https://github.com/tazolabs/tazo-sdk). Existing PyPI and
-TestPyPI version 0.1.1 remain usable. See [SETUP.md](../SETUP.md) for repository
-cutover and [RELEASING.md](../RELEASING.md) for a future version's release.
+[tazolabs/tazo-sdk](https://github.com/tazolabs/tazo-sdk). See
+[RELEASING.md](../RELEASING.md) for the `sdk-v0.1.2` release steps.

@@ -6,8 +6,8 @@ The package name, `tazo` import, and API origin stay the same. PyPI and TestPyPI
 retain their existing projects and releases. No upload is needed to make the
 source public.
 
-If you have completed this setup, follow [WORKFLOW_TEST.md](WORKFLOW_TEST.md)
-to test publishing the prepared `0.1.2rc1` candidate from this repository.
+If you have completed this setup, follow [RELEASING.md](RELEASING.md)
+to publish the prepared stable `0.1.2` release from this repository.
 
 ## 1. Merge the import PR
 
@@ -125,10 +125,9 @@ See the [official trusted-publisher instructions](https://docs.pypi.org/trusted-
 
 ## 6. Complete the publishing cutover
 
-Future SDK changes belong in this public repository. Test the publishing cutover
-with `0.1.2rc1` using [WORKFLOW_TEST.md](WORKFLOW_TEST.md), then use
-[RELEASING.md](RELEASING.md) when a stable release is needed. The first normal
-new version can be `0.1.2`. Updated README/project URLs appear
+Future SDK changes belong in this public repository. The publishing cutover was
+tested with `0.1.2rc1`; use [RELEASING.md](RELEASING.md) for the prepared stable
+`0.1.2` release. Updated README/project URLs appear
 on PyPI when that new version is uploaded, not when this GitHub PR is merged.
 
 After confirming a future release publishes successfully from this repository,

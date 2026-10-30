@@ -11,9 +11,11 @@ import wave
 from pathlib import Path
 
 import pytest
+from conftest import PCM, ready
 
 from tazo import AsyncTazo, Tazo
 from tazo.streaming import AsyncStreamingSession, StreamingSession
+from tazo.types import SessionReady
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,6 +40,17 @@ def recording(tmp_path):
         handle.setframerate(16000)
         handle.writeframes(b"\x01\x00" * 3200)
     return path
+
+
+def test_verification_chunks_accept_nullable_limit_and_preserve_numeric_limit(verification):
+    audio = verification.Audio(filename="long.wav", wav=b"", pcm=PCM * 650)
+    assert audio.duration_ms == 65000
+    assert (
+        list(audio.chunks(SessionReady.model_validate(ready(max_turn_audio_ms=None))))
+        == [PCM] * 650
+    )
+    with pytest.raises(ValueError, match="turn limit"):
+        list(audio.chunks(SessionReady.model_validate(ready(max_turn_audio_ms=30000))))
 
 
 @pytest.mark.parametrize("expected,exit_code", [(None, 0), ("NO_TOOL", 0), ("get_weather", 1)])

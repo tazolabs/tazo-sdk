@@ -125,7 +125,7 @@ class FakeAPI:
                 "config_revision": 1,
                 "input_audio": {"encoding": "pcm_s16le", "sample_rate_hz": 16000, "channels": 1},
                 "evaluation_interval_ms": 1000,
-                "max_turn_audio_ms": self.max_turn_ms,
+                "max_turn_audio_ms": None if start["audio_scope"] == "chunk" else self.max_turn_ms,
                 "max_audio_message_bytes": self.max_message_bytes,
                 "audio_scope": start["audio_scope"],
             }

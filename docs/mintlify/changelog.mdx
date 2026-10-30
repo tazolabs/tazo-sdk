@@ -3,6 +3,18 @@ title: Python SDK changelog
 description: Releases, API compatibility, and migration notes.
 ---
 
+## 0.1.2 — 2026-10-30
+
+- Default sync and async streaming to `audio_scope="chunk"`.
+- Accept a `None` turn-duration limit for continuous chunk streams; continue
+  enforcing numeric limits and per-message size limits.
+- Update the examples and reference for the current public API.
+
+When upgrading, pass `audio_scope="turn"` explicitly if the final decision must
+cover the complete recording. Chunk results cover the latest audio window.
+The SDK continues to send mono 16 kHz PCM16. Uploads, health, and model discovery
+are unchanged.
+
 ## 0.1.2rc1 — 2026-10-28
 
 - Prepare a release candidate to verify publishing from the public SDK repository.
