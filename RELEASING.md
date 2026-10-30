@@ -5,13 +5,16 @@ Do not upload 0.1.1 again. Complete the one-time environments and trusted
 publisher setup in [SETUP.md](SETUP.md) before publishing a **new** version from
 `tazolabs/tazo-sdk`.
 
-The commands below use **0.1.2** as the first future release example. Do not run
-them until the version change is reviewed and merged. Publishing workflows are
-manual; merging a preparation PR does not publish a package.
+This checkout prepares stable **0.1.2**, tagged **`sdk-v0.1.2`**, to match the
+updated serving API. Review [CHANGELOG.md](CHANGELOG.md), especially the default
+streaming mode change. Create the tag only after its preparation PR is merged
+and CI passes on `main`. A tag belongs to a commit, not to a PR; tagging a PR's
+head before a squash merge can leave the tag outside `main` and fail the release
+guard. Publishing workflows are manual; merging the PR or pushing a tag alone
+does not publish a package.
 
-For the prepared **0.1.2rc1** workflow test, use [WORKFLOW_TEST.md](WORKFLOW_TEST.md).
-That checklist uses the candidate tag and exact prerelease version throughout;
-the stable 0.1.2 commands below apply only after a separate stable version bump.
+The earlier `0.1.2rc1` publisher test is recorded in
+[WORKFLOW_TEST.md](WORKFLOW_TEST.md). Use the stable commands below for this release.
 
 ## Prepare and review
 

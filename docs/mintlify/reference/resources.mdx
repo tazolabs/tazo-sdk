@@ -60,7 +60,7 @@ Upload audio and wait for a typed decision.
 #### stream()
 
 ```python
-stream(*, state, questions, model='tazo-large', audio_scope='turn', evaluation_interval_ms=None, event_timeout=65)
+stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65)
 ```
 
 Create a context-managed session for one question and multiple turns.
@@ -73,7 +73,7 @@ Create a context-managed session for one question and multiple turns.
 
   * **model** (*str*) – Public model ID; the model’s advertised capabilities apply.
 
-  * **audio_scope** (*Literal*_\[_*'turn'*_,_ *'chunk'*_]_) – turn evaluates cumulative audio; chunk evaluates new audio.
+  * **audio_scope** (*Literal*_\[_*'turn'*_,_ *'chunk'*_]_) – chunk (default) evaluates new audio; turn evaluates cumulative audio.
 
   * **evaluation_interval_ms** (*int*  *|*_None_) – Integer from 100 to 30000, or server default.
 
@@ -132,7 +132,7 @@ File reads run in a worker thread; HTTP uses native asynchronous I/O. Cancellati
 #### stream()
 
 ```python
-stream(*, state, questions, model='tazo-large', audio_scope='turn', evaluation_interval_ms=None, event_timeout=65)
+stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65)
 ```
 
 Create an async context manager; use async for to receive typed events.

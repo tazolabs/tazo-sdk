@@ -126,7 +126,7 @@ paths:
         "422":
           description: >-
             The `request` JSON does not match the v1 contract (`invalid_request`),
-            its combined text exceeds 1,000 characters (`request_text_too_long`),
+            its combined text exceeds the account's limit (1,000 characters by default; `request_text_too_long`),
             or the model rejected it (`model_rejected_request`).
           content:
             application/json:
@@ -326,7 +326,7 @@ components:
             type: string
     DecisionRequest:
       type: object
-      description: State, question instructions, and criteria share a 1,000-character budget. See the Limits guide for counting rules.
+      description: State, question instructions, and criteria share the account's character budget (1,000 by default). See the Limits guide for counting rules.
       additionalProperties: false
       required: [state, questions]
       properties:

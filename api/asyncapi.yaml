@@ -14,9 +14,9 @@ channels:
   decisions:
     address: /v1/decisions/stream
     title: Stream decisions
-    description: Send audio and receive typed decisions over one WebSocket connection. The default audio
-      limit is 30 seconds per turn. Commit each turn and wait for decision.finalized before sending the
-      next.
+    description: Send audio and receive typed decisions over one WebSocket connection. Chunk mode has
+      no cumulative audio-duration cap and reports max_turn_audio_ms as null. Turn mode reports a numeric
+      model/server limit; commit before exceeding it and wait for decision.finalized before the next turn.
     servers:
     - $ref: '#/servers/production'
     messages:
@@ -149,7 +149,7 @@ components:
             sample_rate_hz: 16000
             channels: 1
           evaluation_interval_ms: 500
-          max_turn_audio_ms: 30000
+          max_turn_audio_ms: null
           max_audio_message_bytes: 6400
           audio_scope: chunk
     sessionUpdated:
@@ -261,15 +261,18 @@ components:
       name: audio
       title: Binary audio
       contentType: application/octet-stream
-      summary: Send raw PCM16 little-endian audio, mono, 16 kHz, after session.ready.
-      description: Use binary WebSocket frames with an even byte count of 2 to 6400 bytes. A 100 ms chunk
-        is 3200 bytes. Send the samples directly, without JSON, base64 encoding, or file headers. Commit
-        before the turn limit.
+      summary: Send raw mono audio matching session.start.input_audio after session.ready.
+      description: Send nonempty binary WebSocket messages with complete samples, at most 200 ms
+        of source audio. PCM16 requires even byte counts; G.711 uses one byte per sample.
+        Read session.ready.max_audio_message_bytes for the format-specific cap, from 1600 bytes
+        for G.711 at 8 kHz to 19200 for PCM16 at 48 kHz. Send samples directly, without JSON,
+        base64 encoding, or file headers. Pace audio at real-time speed. Commit before the
+        source-audio turn limit when session.ready.max_turn_audio_ms is a number; null means no total cap.
       payload:
         type: string
         format: binary
-        minLength: 2
-        maxLength: 6400
+        minLength: 1
+        maxLength: 19200
   schemas:
     ChoiceQuestion:
       additionalProperties: false
@@ -345,14 +348,18 @@ components:
       type: object
     StreamAudioFormat:
       additionalProperties: false
+      description: Source audio declaration, fixed for the connection. PCM16 supports integer rates
+        from 8000 to 48000 Hz. G.711 mulaw and alaw require an explicit 8000 Hz rate. The server
+        decodes and resamples to mono 16 kHz internally; raw input cannot be autodetected.
       properties:
         encoding:
-          const: pcm_s16le
+          enum: [pcm_s16le, mulaw, alaw]
           default: pcm_s16le
           title: Encoding
           type: string
         sample_rate_hz:
-          const: 16000
+          minimum: 8000
+          maximum: 48000
           default: 16000
           title: Sample Rate Hz
           type: integer
@@ -363,10 +370,20 @@ components:
           type: integer
       title: StreamAudioFormat
       type: object
+      oneOf:
+      - properties:
+          encoding:
+            const: pcm_s16le
+      - required: [encoding, sample_rate_hz]
+        properties:
+          encoding:
+            enum: [mulaw, alaw]
+          sample_rate_hz:
+            const: 8000
     SessionStart:
       additionalProperties: false
       description: >-
-        Request text is limited to 1,000 characters; see the Limits guide.
+        Request text uses the account's character limit (1,000 by default); see the Limits guide.
         Exceeding it returns fatal request_text_too_long and closes with code 1008.
       properties:
         model:
@@ -418,7 +435,7 @@ components:
           description: Evaluation interval in milliseconds. The server default is 500; inference speed
             also affects response timing.
         audio_scope:
-          default: turn
+          default: chunk
           enum:
           - turn
           - chunk
@@ -516,15 +533,18 @@ components:
           title: Evaluation Interval Ms
           type: integer
         max_turn_audio_ms:
-          exclusiveMinimum: 0
+          anyOf:
+          - exclusiveMinimum: 0
+            type: integer
+          - type: 'null'
           title: Max Turn Audio Ms
-          type: integer
+          description: Null for continuous chunk streams; otherwise the maximum audio duration per turn.
         max_audio_message_bytes:
           exclusiveMinimum: 0
           title: Max Audio Message Bytes
           type: integer
         audio_scope:
-          default: turn
+          default: chunk
           enum:
           - turn
           - chunk

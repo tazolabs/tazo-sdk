@@ -1,5 +1,10 @@
 # Test the publishing workflow with 0.1.2rc1
 
+This is the historical publisher test for tag `sdk-v0.1.2rc1`. The current
+checkout prepares stable `0.1.2`; use [RELEASING.md](RELEASING.md) for that release.
+If repeating this historical test, use a checkout of the candidate tag so that
+its version, examples, and release instructions match.
+
 This release candidate tests publication from `tazolabs/tazo-sdk`. It changes
 the runtime version identifier and includes the public repository's metadata
 and documentation. Its other runtime files are identical to stable 0.1.1.

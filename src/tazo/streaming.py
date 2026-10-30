@@ -155,7 +155,10 @@ class _State:
             raise InvalidRequestError(
                 "Audio message exceeds session.ready.max_audio_message_bytes."
             )
-        if (self.audio_bytes + len(audio)) * 1000 > self.ready.max_turn_audio_ms * 32000:
+        if (
+            self.ready.max_turn_audio_ms is not None
+            and (self.audio_bytes + len(audio)) * 1000 > self.ready.max_turn_audio_ms * 32000
+        ):
             raise InvalidRequestError("Commit before exceeding session.ready.max_turn_audio_ms.")
 
     def control(

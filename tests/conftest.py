@@ -86,7 +86,13 @@ def websocket_server():
                 turn = 1
                 audio = bytearray()
                 scope = payload["audio_scope"]
-                socket.send(json.dumps(ready(audio_scope=scope)))
+                socket.send(
+                    json.dumps(
+                        ready(
+                            audio_scope=scope, max_turn_audio_ms=None if scope == "chunk" else 30000
+                        )
+                    )
+                )
 
                 def emit(body):
                     nonlocal sequence

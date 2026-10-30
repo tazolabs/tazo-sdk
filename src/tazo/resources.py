@@ -125,7 +125,7 @@ class Decisions:
         state: StructuredValue,
         questions: QuestionsInput,
         model: str = "tazo-large",
-        audio_scope: Literal["turn", "chunk"] = "turn",
+        audio_scope: Literal["turn", "chunk"] = "chunk",
         evaluation_interval_ms: int | None = None,
         event_timeout: float = 65,
     ) -> StreamingSession:
@@ -135,7 +135,7 @@ class Decisions:
             state: Context for the decision.
             questions: Exactly one choice or noul question.
             model: Public model ID; the model's advertised capabilities apply.
-            audio_scope: turn evaluates cumulative audio; chunk evaluates new audio.
+            audio_scope: chunk (default) evaluates new audio; turn evaluates cumulative audio.
             evaluation_interval_ms: Integer from 100 to 30000, or server default.
             event_timeout: Maximum seconds waiting for each server event.
 
@@ -198,7 +198,7 @@ class AsyncDecisions:
         state: StructuredValue,
         questions: QuestionsInput,
         model: str = "tazo-large",
-        audio_scope: Literal["turn", "chunk"] = "turn",
+        audio_scope: Literal["turn", "chunk"] = "chunk",
         evaluation_interval_ms: int | None = None,
         event_timeout: float = 65,
     ) -> AsyncStreamingSession:

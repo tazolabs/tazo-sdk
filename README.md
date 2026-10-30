@@ -106,7 +106,7 @@ from tazo import AsyncTazo, wav_chunks
 async def stream_recording(questions):
     async with AsyncTazo() as client:
         async with client.decisions.stream(
-            state="Choose an action.", questions=questions, audio_scope="turn"
+            state="Choose an action.", questions=questions
         ) as session:
 
             async def send():
@@ -138,11 +138,18 @@ continue iterating through `session.closed`. Context exit closes immediately.
 Fatal server errors raise `StreamingError`; recoverable errors are `ErrorEvent`s.
 Future event types become `UnknownEvent`, preserving their fields.
 
-Default `audio_scope="turn"` evaluates cumulative audio. `chunk` evaluates only
-new audio; its final result covers the last window, not the whole turn. Each
-evaluation counts against the account's per-model limits. Long recordings must
-be divided into turns within the server's advertised duration. There is no
+Default `audio_scope="chunk"` evaluates only new audio; its final result covers
+the last window. Set `audio_scope="turn"` explicitly to evaluate cumulative audio.
+Each evaluation counts against the account's per-model limits. Chunk streams
+report `session.ready.max_turn_audio_ms` as `None` and have no cumulative duration
+cap. A numeric server-advertised limit still applies in turn mode. Keep pacing
+audio and obeying `max_audio_message_bytes` in either mode. There is no
 automatic reconnect, audio replay, silence detection, or microphone dependency.
+
+**Upgrading to 0.1.2:** earlier SDK versions defaulted to `audio_scope="turn"`.
+Set it explicitly in existing integrations that require a final decision over
+the complete recording. `examples/verify.py` does this for its whole-recording
+checks. The SDK continues to send mono 16 kHz PCM16 streaming audio.
 
 ## Retries and errors
 
@@ -206,15 +213,15 @@ default authorization headers if health requests must remain unauthenticated.
 
 ## Verify the published SDK
 
-This checkout prepares **0.1.2rc1**, a release candidate for testing the public
-repository's publishing workflow. The stable **0.1.1** package remains available
-on PyPI and TestPyPI. The candidate's runtime files match that release byte for
-byte except for `__version__`; CI checks them against the recorded hashes in
-[compatibility/published-0.1.1.json](compatibility/published-0.1.1.json).
+This checkout prepares **0.1.2** for the updated streaming API. Follow
+[RELEASING.md](RELEASING.md) to publish the reviewed tag **`sdk-v0.1.2`** to
+TestPyPI, verify it, and then publish to PyPI. Until publication completes,
+`pip install tazo-sdk` still selects stable 0.1.1. After publication, use an
+explicit `tazo-sdk==0.1.2` pin when verifying this release.
 
-Follow [WORKFLOW_TEST.md](WORKFLOW_TEST.md) to publish and install the candidate.
-Ordinary `pip install tazo-sdk` selects the stable release; test the candidate
-with an explicit `tazo-sdk==0.1.2rc1` pin after its publication.
+The historical import hashes in
+[compatibility/published-0.1.1.json](compatibility/published-0.1.1.json) record the
+original migration. Version 0.1.2 includes the streaming changes described above.
 
 With the published package installed and `TAZO_API_KEY` set, run from this checkout:
 
@@ -250,7 +257,7 @@ dependencies are HTTPX, Pydantic, and websockets.
 
 | Directory | Contents |
 | --- | --- |
-| `src/tazo` | The typed synchronous and asynchronous SDK; 0.1.2rc1 changes only the runtime version identifier. |
+| `src/tazo` | The typed synchronous and asynchronous SDK for the four public APIs. |
 | `examples` | Upload, streaming, durable replay smoke test, and four-mode verification with sample audio. |
 | `tests` | HTTP, streaming, public-contract, documentation, verification, and release-baseline tests. |
 | `api` | Public OpenAPI and AsyncAPI contracts used in compatibility tests. |
@@ -266,11 +273,9 @@ set up and use this SDK.
 ## Repository setup and releases
 
 Maintainers moving publication to this repository should follow [SETUP.md](SETUP.md).
-Existing users can continue installing `tazo-sdk==0.1.1`; no reinstall or new
-package release is needed because the source repository became public.
-Do not republish 0.1.1. The release workflow rejects already-published 0.1.0
-and 0.1.1. Use [the release-candidate checklist](WORKFLOW_TEST.md) to test the new
-workflow with 0.1.2rc1. A later stable release can use 0.1.2 after review.
+The publishing workflow was tested with `0.1.2rc1`. The next stable release is
+`0.1.2`; its tag is `sdk-v0.1.2`. Tags are created after the preparation PR is
+merged and CI passes on `main`. Published versions and tags must remain fixed.
 
 See [RELEASING.md](RELEASING.md) for future releases. API v1 and SDK versions are
 independent. This beta may change its Python interface before 1.0; changes are

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.2 — 2026-10-30
+
+- Match the serving SDK's default `audio_scope="chunk"` for sync and async streams.
+- Accept `session.ready.max_turn_audio_ms=null` and allow continuous chunk streams
+  beyond 30 seconds; preserve numeric turn limits and message-size checks.
+- Update smoke/verification helpers to handle nullable duration limits.
+- Sync the public OpenAPI/AsyncAPI snapshots and streaming documentation.
+
+**Migration:** specify `audio_scope="turn"` explicitly when a final decision must
+cover the whole recording. Chunk results cover the latest audio window. Streaming
+audio remains mono 16 kHz PCM16 in this SDK; uploads and the other public APIs
+are unchanged. Runtime dependencies are unchanged.
+
 ## 0.1.2rc1 — 2026-10-28
 
 - Move SDK development to the public `tazolabs/tazo-sdk` repository, with

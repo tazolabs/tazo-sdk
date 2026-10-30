@@ -19,7 +19,6 @@ async def stream_audio():
                 "instructions": "Which action should be taken?",
                 "criteria": {"get_weather": "Get weather.", "NO_TOOL": "No tool needed."},
             }},
-            audio_scope="turn",
         ) as session:
             print(session.ready.max_turn_audio_ms)
 
@@ -43,13 +42,18 @@ async def stream_audio():
 asyncio.run(stream_audio())
 ```
 
-`wav_chunks` validates mono, 16 kHz, PCM16 WAV files and emits raw samples without
-headers. Its default chunk is 100 ms. It neither resamples nor paces audio; the
-example adds microphone-speed pacing. Divide recordings into turns within
-`session.ready.max_turn_audio_ms`. Sending faster does not guarantee lower latency.
+The SDK declares mono 16 kHz PCM16 input. `wav_chunks` validates matching WAV
+files and emits raw samples without headers. Its default chunk is 100 ms.
+It neither resamples nor paces audio; the
+example adds microphone-speed pacing. In chunk mode, `session.ready.max_turn_audio_ms`
+is `None` and no periodic commits are required. If the server returns a numeric
+limit, divide recordings into turns within it. Sending faster can fill the pending
+audio buffer and does not guarantee lower latency.
 
-`audio_scope="turn"` evaluates cumulative audio. `chunk` evaluates new audio
-only; its final event covers the last window rather than summarizing the turn.
+The default `audio_scope="chunk"` evaluates new audio only; its final event covers
+the last window. Set `audio_scope="turn"` explicitly to evaluate cumulative audio.
+Before SDK 0.1.2, turn mode was the default. Set it explicitly when upgrading
+an integration that needs a final decision covering the whole recording.
 `evaluation_interval_ms` accepts an integer from 100 to 30000; omission uses the
 server default. Each evaluation shares the account's inference allowance.
 
