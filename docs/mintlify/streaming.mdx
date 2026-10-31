@@ -8,11 +8,13 @@ context manager sends authentication and waits for `session.ready` automatically
 
 ```python
 import asyncio
-from tazo import AsyncTazo, wav_chunks
+from tazo import AsyncTazo, wav_chunks, wav_sample_rate
 
 async def stream_audio():
     async with AsyncTazo() as client:
+        rate = wav_sample_rate("request.wav")
         async with client.decisions.stream(
+            sample_rate_hz=rate,
             state="Choose an action.",
             questions={"action": {
                 "type": "choice",
@@ -24,7 +26,7 @@ async def stream_audio():
 
             async def send():
                 for chunk in wav_chunks("request.wav"):
-                    await asyncio.sleep(len(chunk) / 32000)
+                    await asyncio.sleep(len(chunk) / (rate * 2))
                     await session.send_audio(chunk)
                 await session.commit()
 
@@ -42,8 +44,9 @@ async def stream_audio():
 asyncio.run(stream_audio())
 ```
 
-The SDK declares mono 16 kHz PCM16 input. `wav_chunks` validates matching WAV
-files and emits raw samples without headers. Its default chunk is 100 ms.
+The SDK declares mono PCM16 input at `sample_rate_hz` (8000 to 48000, default 16000).
+`wav_sample_rate` reads a WAV's rate and `wav_chunks` validates the file and emits
+raw samples without headers. Its default chunk is 100 ms.
 It neither resamples nor paces audio; the
 example adds microphone-speed pacing. In chunk mode, `session.ready.max_turn_audio_ms`
 is `None` and no periodic commits are required. If the server returns a numeric

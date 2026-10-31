@@ -50,7 +50,8 @@ with Tazo() as client:
 `ChoiceQuestion` / `NoulQuestion` models are accepted. Check `models.list()` for
 model-specific capabilities. Score questions aren't supported by this SDK release.
 
-Audio can be a path, bytes, or a binary stream. For bytes, pass `filename` and
+Audio can be a path, bytes, or a binary stream, at any sample rate and in common
+formats such as WAV and MP3. For bytes, pass `filename` and
 `content_type` when known. Uploads are snapshotted once, up to 16 MiB, so retries
 use the same bytes and MIME type. Caller-provided streams aren't closed;
 seekable streams are restored to their initial position. Nonseekable streams are
@@ -92,26 +93,28 @@ async context manager, not an awaitable factory.
 
 Both clients expose `decisions.stream(state=..., questions=...)`. Entering the
 context authenticates in `session.start` and waits for `session.ready`. Inspect
-`session.ready` for limits. Send raw mono 16 kHz PCM16 little-endian bytes, at most
-`max_audio_message_bytes` per message. The `wav_chunks` helper strips WAV headers
-and validates the format; it does not resample or pace audio.
+`session.ready` for limits. Send raw mono PCM16 little-endian bytes at the rate you pass as `sample_rate_hz`
+(8000 to 48000, default 16000), at most `max_audio_message_bytes` per message. The server
+resamples internally. The `wav_chunks` helper strips WAV headers and validates the
+format, and `wav_sample_rate` reads a WAV's rate; neither resamples or paces audio.
 
 Send audio in one task while another consumes events:
 
 ```python
 import asyncio
-from tazo import AsyncTazo, wav_chunks
+from tazo import AsyncTazo, wav_chunks, wav_sample_rate
 
 
 async def stream_recording(questions):
     async with AsyncTazo() as client:
+        rate = wav_sample_rate("request.wav")
         async with client.decisions.stream(
-            state="Choose an action.", questions=questions
+            state="Choose an action.", questions=questions, sample_rate_hz=rate
         ) as session:
 
             async def send():
                 for chunk in wav_chunks("request.wav"):
-                    await asyncio.sleep(len(chunk) / 32000)  # microphone pacing
+                    await asyncio.sleep(len(chunk) / (rate * 2))  # microphone pacing
                     await session.send_audio(chunk)
                 await session.commit()
 

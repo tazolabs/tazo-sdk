@@ -39,7 +39,7 @@ The included `weather.wav` is synthesized speech saying "What is the weather
 today?", generated with macOS `say` and converted to mono 16 kHz PCM16. Replace
 `--audio` with your own recording to test other inputs.
 
-The WAV must be uncompressed mono 16 kHz PCM16, nonempty, within 16 MiB, and
+The WAV must be uncompressed mono PCM16 at 8 to 48 kHz, nonempty, within 16 MiB, and
 shorter than each model's advertised audio and streaming-turn limits. The script
 prints the installed SDK version and import path, each decision with its
 probabilities, timings, and a final `Summary: 8/8 passed`. The JSON report contains

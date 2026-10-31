@@ -3,6 +3,12 @@ title: Python SDK changelog
 description: Releases, API compatibility, and migration notes.
 ---
 
+## Unreleased
+
+- Add `sample_rate_hz` (8000 to 48000, default 16000) to `decisions.stream`, and accept
+  any mono PCM16 WAV rate in `wav_chunks`. Add `wav_sample_rate`.
+- Uploads accept any sample rate and common formats such as WAV and MP3.
+
 ## 0.1.2 — 2026-10-30
 
 - Default sync and async streaming to `audio_scope="chunk"`.

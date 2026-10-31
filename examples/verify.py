@@ -1,6 +1,6 @@
 """Verify sync/async uploads and streaming with the installed Tazo SDK.
 
-Requires Python 3.11+, tazo-sdk, TAZO_API_KEY, and a mono 16 kHz PCM16 WAV.
+Requires Python 3.11+, tazo-sdk, TAZO_API_KEY, and a mono PCM16 WAV (8-48 kHz).
 Runs real inference work, sequentially, for each requested model. Exit code 0
 means every case passed; 1 means a check failed; 2 means invalid local input.
 """
@@ -55,10 +55,11 @@ class Audio:
     filename: str
     wav: bytes
     pcm: bytes
+    sample_rate_hz: int = 16000
 
     @property
     def duration_ms(self) -> float:
-        return len(self.pcm) / 32
+        return len(self.pcm) * 1000 / (self.sample_rate_hz * 2)
 
     def chunks(self, ready: SessionReady) -> Iterator[bytes]:
         if ready.max_turn_audio_ms is not None and self.duration_ms > ready.max_turn_audio_ms:
@@ -76,18 +77,18 @@ def load_audio(path: Path) -> Audio:
     if len(data) > 16 * 1024 * 1024:
         raise ValueError("Audio uploads must fit within 16 MiB.")
     with wave.open(io.BytesIO(data), "rb") as source:
-        if (
-            source.getnchannels(),
-            source.getsampwidth(),
-            source.getframerate(),
-            source.getcomptype(),
-        ) != (1, 2, 16000, "NONE"):
-            raise ValueError("Use a mono, 16 kHz, PCM16 WAV file.")
+        rate = source.getframerate()
+        if (source.getnchannels(), source.getsampwidth(), source.getcomptype()) != (
+            1,
+            2,
+            "NONE",
+        ) or not 8000 <= rate <= 48000:
+            raise ValueError("Use a mono PCM16 WAV file from 8 to 48 kHz.")
         frames = source.getnframes()
         pcm = source.readframes(frames)
         if not frames or len(pcm) != frames * 2:
             raise ValueError("Audio is empty or the WAV is truncated.")
-    return Audio(path.name, data, pcm)
+    return Audio(path.name, data, pcm, rate)
 
 
 def check_models(models: ModelList, selected: list[str], audio: Audio) -> None:
@@ -157,6 +158,7 @@ def sync_stream(client: Tazo, audio: Audio, model: str, timeout: float) -> Decis
         audio_scope="turn",
         evaluation_interval_ms=1000,
         event_timeout=timeout,
+        sample_rate_hz=audio.sample_rate_hz,
     ) as session:
         # Validate all negotiated limits before starting the sender thread.
         chunks = list(audio.chunks(session.ready))
@@ -167,7 +169,7 @@ def sync_stream(client: Tazo, audio: Audio, model: str, timeout: float) -> Decis
                     if stopped.is_set():
                         return
                     session.send_audio(chunk)
-                    if stopped.wait(len(chunk) / 32000):
+                    if stopped.wait(len(chunk) / (audio.sample_rate_hz * 2)):
                         return
                 session.commit()
             except Exception as error:
@@ -215,6 +217,7 @@ async def async_stream(
             audio_scope="turn",
             evaluation_interval_ms=1000,
             event_timeout=timeout,
+            sample_rate_hz=audio.sample_rate_hz,
         ) as session,
     ):
         chunks = list(audio.chunks(session.ready))
@@ -222,7 +225,7 @@ async def async_stream(
         async def send() -> None:
             for chunk in chunks:
                 await session.send_audio(chunk)
-                await asyncio.sleep(len(chunk) / 32000)
+                await asyncio.sleep(len(chunk) / (audio.sample_rate_hz * 2))
             await session.commit()
 
         async def receive() -> None:

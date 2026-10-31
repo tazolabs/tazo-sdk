@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add `sample_rate_hz` (8000 to 48000, default 16000) to `decisions.stream`, and accept
+  any PCM16 mono WAV rate in `wav_chunks`. Add `wav_sample_rate`.
+- Uploads accept any sample rate and common audio formats such as WAV and MP3.
+
 ## 0.1.2 — 2026-10-30
 
 - Match the serving SDK's default `audio_scope="chunk"` for sync and async streams.

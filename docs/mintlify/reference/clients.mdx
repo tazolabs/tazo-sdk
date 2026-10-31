@@ -87,11 +87,11 @@ Release the SDK-owned HTTP pool.
 tazo.wav_chunks(path, *, chunk_ms=100)
 ```
 
-Yield raw mono 16 kHz PCM16 from a WAV, without headers or real-time pacing.
+Yield raw mono PCM16 from a WAV, without headers or real-time pacing.
 
 * Parameters:
 
-  * **path** (*str*  *|*_PathLike_*\[*_str_*]*) – PCM16 WAV recording. Compressed WAV and other formats are rejected.
+  * **path** (*str*  *|*_PathLike_*\[*_str_*]*) – Mono PCM16 WAV recording at 8 to 48 kHz. Pass its rate (see `wav_sample_rate`) as `sample_rate_hz` to `stream`. Compressed WAV is rejected.
 
   * **chunk_ms** (*int*) – Chunk size from 1 to 200 milliseconds.
 
@@ -102,3 +102,19 @@ Yield raw mono 16 kHz PCM16 from a WAV, without headers or real-time pacing.
 * Return type:
 
   *Iterator*\[bytes]
+
+### wav_sample_rate()
+
+```python
+tazo.wav_sample_rate(path)
+```
+
+Return the sample rate of a mono PCM16 WAV, to pass as `sample_rate_hz` to `stream`.
+
+* Parameters:
+
+  **path** (*str*  *|*_PathLike_*\[*_str_*]*)
+
+* Return type:
+
+  int

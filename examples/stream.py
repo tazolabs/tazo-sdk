@@ -4,7 +4,7 @@ import argparse
 import asyncio
 from pathlib import Path
 
-from tazo import AsyncTazo, wav_chunks
+from tazo import AsyncTazo, wav_chunks, wav_sample_rate
 from tazo.types import QuestionsInput
 
 QUESTIONS: QuestionsInput = {
@@ -18,11 +18,14 @@ QUESTIONS: QuestionsInput = {
 
 async def stream_recording(client: AsyncTazo, path: Path, questions: QuestionsInput) -> None:
     """Pace WAV samples and propagate failures from either producer or receiver."""
-    async with client.decisions.stream(state="Choose an action.", questions=questions) as session:
+    rate = wav_sample_rate(path)
+    async with client.decisions.stream(
+        state="Choose an action.", questions=questions, sample_rate_hz=rate
+    ) as session:
 
         async def send() -> None:
             for chunk in wav_chunks(path):
-                await asyncio.sleep(len(chunk) / 32000)
+                await asyncio.sleep(len(chunk) / (rate * 2))
                 await session.send_audio(chunk)
             await session.commit()
 

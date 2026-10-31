@@ -128,6 +128,7 @@ class Decisions:
         audio_scope: Literal["turn", "chunk"] = "chunk",
         evaluation_interval_ms: int | None = None,
         event_timeout: float = 65,
+        sample_rate_hz: int = 16000,
     ) -> StreamingSession:
         """Create a context-managed session for one question and multiple turns.
 
@@ -138,6 +139,7 @@ class Decisions:
             audio_scope: chunk (default) evaluates new audio; turn evaluates cumulative audio.
             evaluation_interval_ms: Integer from 100 to 30000, or server default.
             event_timeout: Maximum seconds waiting for each server event.
+            sample_rate_hz: Sample rate of the raw mono PCM16 audio you send, from 8000 to 48000.
 
         Returns:
             A StreamingSession; entering it authenticates and waits for readiness.
@@ -151,6 +153,7 @@ class Decisions:
                 audio_scope,
                 evaluation_interval_ms,
                 event_timeout,
+                sample_rate_hz,
             ),
         )
 
@@ -201,6 +204,7 @@ class AsyncDecisions:
         audio_scope: Literal["turn", "chunk"] = "chunk",
         evaluation_interval_ms: int | None = None,
         event_timeout: float = 65,
+        sample_rate_hz: int = 16000,
     ) -> AsyncStreamingSession:
         """Create an async context manager; use async for to receive typed events.
 
@@ -216,6 +220,7 @@ class AsyncDecisions:
                 audio_scope,
                 evaluation_interval_ms,
                 event_timeout,
+                sample_rate_hz,
             ),
         )
 
