@@ -186,7 +186,7 @@ class AudioFormat(ResponseModel):
     """Streaming audio format negotiated by the server."""
 
     encoding: Literal["pcm_s16le"] = "pcm_s16le"
-    sample_rate_hz: Literal[16000] = 16000
+    sample_rate_hz: int = Field(default=16000, ge=8000, le=48000)
     channels: Literal[1] = 1
 
 

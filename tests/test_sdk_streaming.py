@@ -1,11 +1,20 @@
 import asyncio
 import json
 import threading
+import wave
 
 import pytest
 from conftest import PCM, QUESTIONS, ready
 
-from tazo import AsyncTazo, InvalidRequestError, ProtocolError, StreamingError, Tazo, wav_chunks
+from tazo import (
+    AsyncTazo,
+    InvalidRequestError,
+    ProtocolError,
+    StreamingError,
+    Tazo,
+    wav_chunks,
+    wav_sample_rate,
+)
 from tazo.types import ErrorEvent, UnknownEvent
 
 
@@ -336,3 +345,32 @@ def test_explicit_async_close_unblocks_receiver(websocket_server):
 
     with websocket_server() as (url, calls):
         asyncio.run(run(url))
+
+
+def test_wav_chunks_other_sample_rates(tmp_path):
+    path = tmp_path / "rate.wav"
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(44100)
+        handle.writeframes(b"\x01\x00" * 4410)
+    assert wav_sample_rate(path) == 44100
+    chunks = list(wav_chunks(path))
+    assert [len(chunk) for chunk in chunks] == [8820]
+    assert len(list(wav_chunks(path, chunk_ms=50))) == 2
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(4000)
+        handle.writeframes(b"\x01\x00" * 40)
+    with pytest.raises(InvalidRequestError):
+        list(wav_chunks(path))
+
+
+def test_stream_declares_sample_rate(websocket_server):
+    with websocket_server() as (url, calls), Tazo(base_url=url, api_key="test-key") as sdk:
+        with pytest.raises(InvalidRequestError):
+            sdk.decisions.stream(state="s", questions=QUESTIONS, sample_rate_hz=4000)
+        with sdk.decisions.stream(state="s", questions=QUESTIONS, sample_rate_hz=44100):
+            pass
+    assert calls[0]["input_audio"]["sample_rate_hz"] == 44100

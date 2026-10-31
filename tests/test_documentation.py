@@ -8,7 +8,7 @@ import httpx
 import yaml
 from conftest import decision
 
-from tazo import AsyncTazo
+from tazo import AsyncTazo, InvalidRequestError
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -84,15 +84,18 @@ def test_streaming_example_completes_and_propagates_sender_failure(wav_file, web
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
+    truncated = wav_file.with_name("truncated.wav")
+    truncated.write_bytes(wav_file.read_bytes()[:-100])
+
     async def run(url):
         async with AsyncTazo(base_url=url, api_key="test-key") as client:
             await asyncio.wait_for(module.stream_recording(client, wav_file, module.QUESTIONS), 3)
             try:
                 await asyncio.wait_for(
-                    module.stream_recording(client, Path("missing.wav"), module.QUESTIONS), 3
+                    module.stream_recording(client, truncated, module.QUESTIONS), 3
                 )
             except ExceptionGroup as errors:
-                assert any(isinstance(error, FileNotFoundError) for error in errors.exceptions)
+                assert any(isinstance(error, InvalidRequestError) for error in errors.exceptions)
             else:
                 raise AssertionError("Producer failure was swallowed")
 

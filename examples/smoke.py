@@ -1,7 +1,7 @@
 """Explicit live API smoke test of all four public APIs; never runs automatically.
 
 Use: TAZO_API_KEY=... python smoke.py --base-url https://api.tazolabs.com --audio short.wav
-The recording must be mono 16 kHz PCM16 and shorter than the advertised turn limit.
+The recording must be a mono PCM16 WAV (8-48 kHz) and shorter than the advertised turn limit.
 This command submits real decision work. Use a dedicated test account and recording.
 """
 
@@ -13,7 +13,7 @@ import wave
 from pathlib import Path
 from uuid import uuid4
 
-from tazo import AsyncTazo, wav_chunks
+from tazo import AsyncTazo, wav_chunks, wav_sample_rate
 from tazo.types import QuestionsInput
 
 QUESTIONS: QuestionsInput = {
@@ -58,7 +58,10 @@ async def run_smoke(client: AsyncTazo, audio: Path) -> None:
                 "The target did not preserve the durable operation across keyed replay."
             )
         async with client.decisions.stream(
-            state="Choose an action.", questions=QUESTIONS, model=model_id
+            state="Choose an action.",
+            questions=QUESTIONS,
+            model=model_id,
+            sample_rate_hz=wav_sample_rate(audio),
         ) as session:
             if (
                 session.ready.max_turn_audio_ms is not None
@@ -68,7 +71,7 @@ async def run_smoke(client: AsyncTazo, audio: Path) -> None:
 
             async def send() -> None:
                 for chunk in wav_chunks(audio):
-                    await asyncio.sleep(len(chunk) / 32000)
+                    await asyncio.sleep(len(chunk) / (wav_sample_rate(audio) * 2))
                     await session.send_audio(chunk)
                 await session.commit()
 

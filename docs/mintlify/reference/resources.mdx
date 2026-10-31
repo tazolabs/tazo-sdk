@@ -60,7 +60,7 @@ Upload audio and wait for a typed decision.
 #### stream()
 
 ```python
-stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65)
+stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65, sample_rate_hz=16000)
 ```
 
 Create a context-managed session for one question and multiple turns.
@@ -78,6 +78,8 @@ Create a context-managed session for one question and multiple turns.
   * **evaluation_interval_ms** (*int*  *|*_None_) – Integer from 100 to 30000, or server default.
 
   * **event_timeout** (*float*) – Maximum seconds waiting for each server event.
+
+  * **sample_rate_hz** (*int*) – Sample rate of the raw mono PCM16 audio you send, from 8000 to 48000.
 
 * Returns:
 
@@ -132,7 +134,7 @@ File reads run in a worker thread; HTTP uses native asynchronous I/O. Cancellati
 #### stream()
 
 ```python
-stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65)
+stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65, sample_rate_hz=16000)
 ```
 
 Create an async context manager; use async for to receive typed events.
@@ -152,6 +154,8 @@ Parameters match Decisions.stream. This method isn’t awaited; use `async with 
   * **evaluation_interval_ms** (*int*  *|*_None_)
 
   * **event_timeout** (*float*)
+
+  * **sample_rate_hz** (*int*)
 
 * Return type:
 

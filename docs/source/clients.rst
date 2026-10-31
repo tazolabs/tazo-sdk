@@ -9,3 +9,5 @@ WAV helper
 ----------
 
 .. autofunction:: tazo.wav_chunks
+
+.. autofunction:: tazo.wav_sample_rate

@@ -54,7 +54,14 @@ class _State:
         audio_scope: Literal["turn", "chunk"],
         evaluation_interval_ms: int | None,
         event_timeout: float,
+        sample_rate_hz: int = 16000,
     ) -> None:
+        if (
+            isinstance(sample_rate_hz, bool)
+            or not isinstance(sample_rate_hz, int)
+            or not 8000 <= sample_rate_hz <= 48000
+        ):
+            raise InvalidRequestError("sample_rate_hz must be an integer from 8000 to 48000.")
         if len(request.questions) != 1:
             raise InvalidRequestError("Streaming requires exactly one question.")
         if audio_scope not in {"turn", "chunk"}:
@@ -70,6 +77,7 @@ class _State:
         if not math.isfinite(event_timeout) or event_timeout <= 0:
             raise ValueError("event_timeout must be positive and finite.")
         self.request = request
+        self.sample_rate_hz = sample_rate_hz
         self.audio_scope = audio_scope
         self.interval = evaluation_interval_ms
         self.event_timeout = event_timeout
@@ -84,7 +92,11 @@ class _State:
             "type": "session.start",
             "authorization": f"Bearer {credential}",
             "audio_scope": self.audio_scope,
-            "input_audio": {"encoding": "pcm_s16le", "sample_rate_hz": 16000, "channels": 1},
+            "input_audio": {
+                "encoding": "pcm_s16le",
+                "sample_rate_hz": self.sample_rate_hz,
+                "channels": 1,
+            },
         }
         if self.interval is not None:
             payload["evaluation_interval_ms"] = self.interval
@@ -157,7 +169,8 @@ class _State:
             )
         if (
             self.ready.max_turn_audio_ms is not None
-            and (self.audio_bytes + len(audio)) * 1000 > self.ready.max_turn_audio_ms * 32000
+            and (self.audio_bytes + len(audio)) * 1000
+            > self.ready.max_turn_audio_ms * self.sample_rate_hz * 2
         ):
             raise InvalidRequestError("Commit before exceeding session.ready.max_turn_audio_ms.")
 

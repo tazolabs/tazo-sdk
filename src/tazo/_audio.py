@@ -55,11 +55,29 @@ def snapshot_audio(audio: AudioInput, filename: str | None, content_type: str | 
     return Upload(data, name, media_type)
 
 
+def wav_sample_rate(path: str | os.PathLike[str]) -> int:
+    """Return the sample rate of a mono PCM16 WAV, to pass as ``sample_rate_hz`` to ``stream``."""
+    with wave.open(str(path), "rb") as handle:
+        return _check_wav(handle)
+
+
+def _check_wav(handle: wave.Wave_read) -> int:
+    rate = handle.getframerate()
+    if (handle.getnchannels(), handle.getsampwidth(), handle.getcomptype()) != (
+        1,
+        2,
+        "NONE",
+    ) or not (8000 <= rate <= 48000):
+        raise InvalidRequestError("Streaming requires a mono PCM16 WAV from 8 to 48 kHz.")
+    return rate
+
+
 def wav_chunks(path: str | os.PathLike[str], *, chunk_ms: int = 100) -> Iterator[bytes]:
-    """Yield raw mono 16 kHz PCM16 from a WAV, without headers or real-time pacing.
+    """Yield raw mono PCM16 from a WAV, without headers or real-time pacing.
 
     Args:
-        path: PCM16 WAV recording. Compressed WAV and other formats are rejected.
+        path: Mono PCM16 WAV recording at 8 to 48 kHz. Pass its rate (see ``wav_sample_rate``)
+            as ``sample_rate_hz`` to ``stream``. Compressed WAV is rejected.
         chunk_ms: Chunk size from 1 to 200 milliseconds.
 
     Yields:
@@ -68,18 +86,12 @@ def wav_chunks(path: str | os.PathLike[str], *, chunk_ms: int = 100) -> Iterator
     if isinstance(chunk_ms, bool) or not isinstance(chunk_ms, int) or not 1 <= chunk_ms <= 200:
         raise InvalidRequestError("chunk_ms must be an integer between 1 and 200.")
     with wave.open(str(path), "rb") as handle:
-        if (
-            handle.getnchannels(),
-            handle.getsampwidth(),
-            handle.getframerate(),
-            handle.getcomptype(),
-        ) != (1, 2, 16000, "NONE"):
-            raise InvalidRequestError("Streaming requires a mono, 16 kHz, PCM16 WAV.")
+        rate = _check_wav(handle)
         if handle.getnframes() == 0:
             raise InvalidRequestError("Audio must not be empty.")
         remaining = handle.getnframes()
         while remaining:
-            frames = min(chunk_ms * 16, remaining)
+            frames = min(chunk_ms * rate // 1000, remaining)
             data = handle.readframes(frames)
             if len(data) != frames * 2:
                 raise InvalidRequestError("The WAV file is truncated.")

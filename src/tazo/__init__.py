@@ -1,6 +1,6 @@
 """Tazo's typed SDK for uploaded and streaming audio decisions."""
 
-from ._audio import wav_chunks
+from ._audio import wav_chunks, wav_sample_rate
 from ._version import __version__
 from .client import AsyncTazo, Tazo
 from .errors import (
@@ -42,4 +42,5 @@ __all__ = [
     "TimeoutError",
     "__version__",
     "wav_chunks",
+    "wav_sample_rate",
 ]
