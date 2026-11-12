@@ -361,7 +361,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--audio", required=True, type=Path)
     parser.add_argument("--base-url", default="https://api.tazolabs.com")
-    parser.add_argument("--models", nargs="+", default=["tazo-large", "tazo-small"])
+    parser.add_argument("--models", nargs="+", default=["tazo-large"])
     parser.add_argument("--expected-choice", choices=sorted(CHOICES))
     parser.add_argument(
         "--timeout", type=float, default=180, help="HTTP budget/stream wait seconds"

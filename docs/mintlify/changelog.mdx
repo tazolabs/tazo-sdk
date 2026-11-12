@@ -3,6 +3,17 @@ title: Python SDK changelog
 description: Releases, API compatibility, and migration notes.
 ---
 
+## 0.1.3 — Unreleased
+
+- Evaluate externally selected utterances with `audio_scope="turn"` and
+  `evaluation_mode="manual"`. Pass connection-relative, exclusive-end sample
+  bounds to `commit()`; audio may continue while awaiting `decision.finalized`.
+- Read `input_audio_range` on finalized decisions and manual retention/session
+  metadata. Interval evaluation remains the default.
+- Match the server's 250–30000 ms evaluation interval bounds.
+- Synchronize future serving changes through labeled SDK PRs. Publishing to
+  TestPyPI and PyPI remains a manual release step.
+
 ## 0.1.2 — 2026-10-30
 
 - Default sync and async streaming to `audio_scope="chunk"`.

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.3 — Unreleased
+
+- Add opt-in manual streaming evaluation to both clients with
+  `audio_scope="turn", evaluation_mode="manual"` and explicit source-sample
+  bounds on `commit()`. Audio can continue while a selected utterance is evaluated.
+- Parse manual session metadata and `input_audio_range` on finalized decisions;
+  preserve the connection sample clock across turns. Default interval payloads
+  remain unchanged.
+- Match the API's 250–30000 ms evaluation interval bounds, including arbitrary
+  integer intervals such as 510 ms.
+- Sync current public contracts, SDK guides, examples, and regression tests.
+- Record serving provenance and document automatic labeled PRs for future SDK
+  exports. Publication remains manual and tag-gated in this repository.
+
+No runtime dependencies were added. The SDK continues to send mono 16 kHz PCM16.
+
 ## 0.1.2 — 2026-10-30
 
 - Match the serving SDK's default `audio_scope="chunk"` for sync and async streams.

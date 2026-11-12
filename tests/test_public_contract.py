@@ -3,10 +3,8 @@ import importlib.metadata
 from pathlib import Path
 
 import yaml
-from conftest import ready
 
 from tazo import Tazo
-from tazo.types import SessionReady
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,7 +17,11 @@ def test_customer_endpoint_allowlist():
         for method in item
         if method in {"get", "post", "put", "delete", "patch"}
     }
-    assert operations == {("POST", "/v1/decisions"), ("GET", "/v1/models"), ("GET", "/healthz")}
+    assert operations == {
+        ("POST", "/v1/decisions"),
+        ("GET", "/v1/models"),
+        ("GET", "/healthz"),
+    }
     asyncapi = yaml.safe_load((ROOT / "api/asyncapi.yaml").read_text())
     assert {c["address"] for c in asyncapi["channels"].values()} == {"/v1/decisions/stream"}
     for spec in (document, asyncapi):
@@ -30,7 +32,8 @@ def test_customer_endpoint_allowlist():
                     if key == "$ref" and child.startswith("#/"):
                         target = document
                         for part in child[2:].split("/"):
-                            target = target[part.replace("~1", "/").replace("~0", "~")]
+                            key = part.replace("~1", "/").replace("~0", "~")
+                            target = target[int(key)] if isinstance(target, list) else target[key]
                     else:
                         refs(child)
             elif isinstance(value, list):
@@ -92,6 +95,10 @@ def test_sdk_has_no_backend_dependency_and_version_matches():
 
 
 def test_streaming_duration_limit_matches_nullable_public_contract():
+    from conftest import ready
+
+    from tazo.types import SessionReady
+
     spec = yaml.safe_load((ROOT / "api/asyncapi.yaml").read_text())
     schemas = spec["components"]["schemas"]
     assert schemas["SessionStart"]["properties"]["audio_scope"]["default"] == "chunk"

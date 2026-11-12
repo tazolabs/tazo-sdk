@@ -205,10 +205,12 @@ class SessionReady(SessionEvent):
     model: str
     config_revision: int = Field(ge=1)
     input_audio: AudioFormat
-    evaluation_interval_ms: int = Field(gt=0)
+    evaluation_interval_ms: int | None = Field(gt=0)
     max_turn_audio_ms: int | None = Field(gt=0)
     max_audio_message_bytes: int = Field(gt=0)
     audio_scope: Literal["turn", "chunk"]
+    evaluation_mode: Literal["interval", "manual"] = "interval"
+    audio_retention_ms: int | None = Field(default=None, gt=0)
 
 
 class SessionUpdated(SessionEvent):
@@ -216,6 +218,14 @@ class SessionUpdated(SessionEvent):
 
     type: Literal["session.updated"]
     config_revision: int = Field(ge=1)
+
+
+class InputAudioRange(ResponseModel):
+    """Source sample positions measured from the start of the connection."""
+
+    start_sample: int = Field(ge=0)
+    end_sample: int = Field(gt=0)
+    sample_rate_hz: int = Field(ge=8000, le=48000)
 
 
 class DecisionEvent(DecisionResponse):
@@ -228,6 +238,7 @@ class DecisionEvent(DecisionResponse):
     config_revision: int = Field(ge=1)
     audio_start_ms: float = Field(default=0, ge=0)
     audio_end_ms: float = Field(ge=0)
+    input_audio_range: InputAudioRange | None = None
 
 
 class SessionClosed(SessionEvent):

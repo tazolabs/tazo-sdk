@@ -16,7 +16,8 @@ channels:
     title: Stream decisions
     description: Send audio and receive typed decisions over one WebSocket connection. Chunk mode has
       no cumulative audio-duration cap and reports max_turn_audio_ms as null. Turn mode reports a numeric
-      model/server limit; commit before exceeding it and wait for decision.finalized before the next turn.
+      model/server limit. Manual evaluation selects explicit source sample ranges while audio continues;
+      interval evaluation requires waiting for decision.finalized before sending the next turn.
     servers:
     - $ref: '#/servers/production'
     messages:
@@ -80,7 +81,7 @@ components:
           authorization: Bearer YOUR_API_KEY
           model: tazo-large
           audio_scope: chunk
-          evaluation_interval_ms: 500
+          evaluation_interval_ms: 1000
           state:
             context: Choose the tool matching the spoken request.
           questions:
@@ -116,16 +117,20 @@ components:
     inputCommit:
       name: input.commit
       title: input.commit
-      summary: Complete the current turn. Wait for decision.finalized before sending more audio.
+      summary: Complete an interval turn, or select a source sample range in manual mode.
       payload:
         $ref: '#/components/schemas/InputCommit'
       examples:
       - payload:
           type: input.commit
+      - payload:
+          type: input.commit
+          audio_start_sample: 32000
+          audio_end_sample: 83200
     inputFinish:
       name: input.finish
       title: input.finish
-      summary: Complete pending audio and close the session.
+      summary: Close after pending work. Manual mode only evaluates explicitly committed ranges.
       payload:
         $ref: '#/components/schemas/InputFinish'
       examples:
@@ -148,7 +153,7 @@ components:
             encoding: pcm_s16le
             sample_rate_hz: 16000
             channels: 1
-          evaluation_interval_ms: 500
+          evaluation_interval_ms: 1000
           max_turn_audio_ms: null
           max_audio_message_bytes: 6400
           audio_scope: chunk
@@ -409,8 +414,8 @@ components:
           minProperties: 1
           title: Questions
           type: object
-          description: Exactly one question. The selected model must support its type and options. Tazo
-            Small requires a NO_TOOL option.
+          description: Exactly one question. Use Tazo Large. Tazo Small is unavailable through the API;
+            requests receive a fatal model_unavailable error and close code 1008. Contact support@tazolabs.com for assistance.
         type:
           const: session.start
           title: Type
@@ -427,12 +432,12 @@ components:
         evaluation_interval_ms:
           anyOf:
           - maximum: 30000
-            minimum: 100
+            minimum: 250
             type: integer
           - type: 'null'
           default: null
           title: Evaluation Interval Ms
-          description: Evaluation interval in milliseconds. The server default is 500; inference speed
+          description: Evaluation interval in milliseconds. The server default is 1000; inference speed
             also affects response timing.
         audio_scope:
           default: chunk
@@ -442,6 +447,11 @@ components:
           title: Audio Scope
           type: string
           description: chunk evaluates new audio only; turn evaluates all audio in the current turn.
+        evaluation_mode:
+          type: string
+          enum: [interval, manual]
+          default: interval
+          description: Manual requires audio_scope turn and no non-null evaluation_interval_ms. Only explicit sample-range commits trigger inference.
       required:
       - state
       - questions
@@ -485,11 +495,23 @@ components:
       type: object
     InputCommit:
       additionalProperties: false
+      description: Manual mode requires both source sample bounds. The end is exclusive; positions count all samples sent since this connection started. Interval mode rejects sample bounds. One decision may run at a time; audio continues during manual inference.
       properties:
         type:
           const: input.commit
           title: Type
           type: string
+        audio_start_sample:
+          type: integer
+          minimum: 0
+          description: First source sample included in the utterance. Must be at or after the preceding committed end.
+        audio_end_sample:
+          type: integer
+          minimum: 1
+          description: First source sample excluded. Must exceed the start and not exceed audio already received.
+      dependentRequired:
+        audio_start_sample: [audio_end_sample]
+        audio_end_sample: [audio_start_sample]
       required:
       - type
       title: InputCommit
@@ -529,9 +551,12 @@ components:
         input_audio:
           $ref: '#/components/schemas/StreamAudioFormat'
         evaluation_interval_ms:
-          exclusiveMinimum: 0
           title: Evaluation Interval Ms
-          type: integer
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0
+          - type: 'null'
+          description: Null in manual evaluation mode.
         max_turn_audio_ms:
           anyOf:
           - exclusiveMinimum: 0
@@ -550,6 +575,15 @@ components:
           - chunk
           title: Audio Scope
           type: string
+        evaluation_mode:
+          type: string
+          enum: [interval, manual]
+          default: interval
+          description: Omitted for legacy interval sessions.
+        audio_retention_ms:
+          type: integer
+          exclusiveMinimum: 0
+          description: Rolling source-audio history available for manual range commits. Present only in manual mode.
       required:
       - session_id
       - sequence
@@ -656,6 +690,21 @@ components:
       - audio_seconds
       title: Usage
       type: object
+    InputAudioRange:
+      type: object
+      additionalProperties: false
+      required: [start_sample, end_sample, sample_rate_hz]
+      properties:
+        start_sample:
+          type: integer
+          minimum: 0
+        end_sample:
+          type: integer
+          minimum: 1
+        sample_rate_hz:
+          type: integer
+          minimum: 8000
+          maximum: 48000
     StreamDecisionEvent:
       additionalProperties: false
       properties:
@@ -709,6 +758,9 @@ components:
           minimum: 0
           title: Audio End Ms
           type: number
+        input_audio_range:
+          $ref: '#/components/schemas/InputAudioRange'
+          description: Present for manual decisions. Original connection-wide source positions; audio_start_ms/audio_end_ms remain relative to the selected turn.
       required:
       - session_id
       - sequence
