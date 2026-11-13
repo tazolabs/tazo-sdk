@@ -57,8 +57,7 @@ class _State:
         *,
         evaluation_mode: Literal["interval", "manual"] = "interval",
     ) -> None:
-        if len(request.questions) != 1:
-            raise InvalidRequestError("Streaming requires exactly one question.")
+        # Question-count and type limits are model-specific and checked by the server.
         if audio_scope not in {"turn", "chunk"}:
             raise InvalidRequestError("audio_scope must be turn or chunk.")
         if evaluation_mode not in {"interval", "manual"}:
@@ -244,8 +243,6 @@ class _State:
         if not can_update or state is None or questions is None:
             raise InvalidRequestError("Update both state and questions between turns.")
         request = decision_request(self.request.model, state, questions)
-        if len(request.questions) != 1:
-            raise InvalidRequestError("Streaming requires exactly one question.")
         self.phase = "updating"
         return json.dumps(
             {
