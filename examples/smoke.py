@@ -1,6 +1,6 @@
-"""Explicit live API smoke test of all four public APIs; never runs automatically.
+"""Explicit staging smoke test of all four public APIs; never runs automatically.
 
-Use: TAZO_API_KEY=... python smoke.py --base-url https://api.tazolabs.com --audio short.wav
+Use: TAZO_API_KEY=... python smoke.py --base-url https://YOUR-STAGING-API --audio short.wav
 The recording must be mono 16 kHz PCM16 and shorter than the advertised turn limit.
 This command submits real decision work. Use a dedicated test account and recording.
 """
@@ -35,7 +35,7 @@ async def run_smoke(client: AsyncTazo, audio: Path) -> None:
     # Validate format and truncation before any decision is admitted.
     for _ in wav_chunks(audio):
         pass
-    for model_id in ("tazo-large", "tazo-small"):
+    for model_id in ("tazo-large",):
         if model_id not in models or not models[model_id].ready:
             raise RuntimeError(f"{model_id} is not ready.")
         key = str(uuid4())
@@ -89,7 +89,7 @@ async def run_smoke(client: AsyncTazo, audio: Path) -> None:
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", required=True, help="Explicit API origin without /v1")
+    parser.add_argument("--base-url", required=True, help="Explicit staging API origin")
     parser.add_argument("--audio", type=Path, required=True)
     args = parser.parse_args()
     async with AsyncTazo(base_url=args.base_url) as client:

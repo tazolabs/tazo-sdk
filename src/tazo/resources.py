@@ -126,6 +126,7 @@ class Decisions:
         questions: QuestionsInput,
         model: str = "tazo-large",
         audio_scope: Literal["turn", "chunk"] = "chunk",
+        evaluation_mode: Literal["interval", "manual"] = "interval",
         evaluation_interval_ms: int | None = None,
         event_timeout: float = 65,
     ) -> StreamingSession:
@@ -136,7 +137,8 @@ class Decisions:
             questions: Exactly one choice or noul question.
             model: Public model ID; the model's advertised capabilities apply.
             audio_scope: chunk (default) evaluates new audio; turn evaluates cumulative audio.
-            evaluation_interval_ms: Integer from 100 to 30000, or server default.
+            evaluation_mode: interval (default), or manual with turn scope and sample-range commits.
+            evaluation_interval_ms: Integer from 250 to 30000, or server default.
             event_timeout: Maximum seconds waiting for each server event.
 
         Returns:
@@ -151,6 +153,7 @@ class Decisions:
                 audio_scope,
                 evaluation_interval_ms,
                 event_timeout,
+                evaluation_mode=evaluation_mode,
             ),
         )
 
@@ -199,6 +202,7 @@ class AsyncDecisions:
         questions: QuestionsInput,
         model: str = "tazo-large",
         audio_scope: Literal["turn", "chunk"] = "chunk",
+        evaluation_mode: Literal["interval", "manual"] = "interval",
         evaluation_interval_ms: int | None = None,
         event_timeout: float = 65,
     ) -> AsyncStreamingSession:
@@ -216,6 +220,7 @@ class AsyncDecisions:
                 audio_scope,
                 evaluation_interval_ms,
                 event_timeout,
+                evaluation_mode=evaluation_mode,
             ),
         )
 

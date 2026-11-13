@@ -5,13 +5,18 @@ Do not upload 0.1.1 again. Complete the one-time environments and trusted
 publisher setup in [SETUP.md](SETUP.md) before publishing a **new** version from
 `tazolabs/tazo-sdk`.
 
-This checkout prepares stable **0.1.2**, tagged **`sdk-v0.1.2`**, to match the
-updated serving API. Review [CHANGELOG.md](CHANGELOG.md), especially the default
-streaming mode change. Create the tag only after its preparation PR is merged
+This checkout prepares stable **0.1.3**, tagged **`sdk-v0.1.3`**, to match the
+updated serving API. Review [CHANGELOG.md](CHANGELOG.md), especially the opt-in
+manual evaluation mode. Create the tag only after its preparation PR is merged
 and CI passes on `main`. A tag belongs to a commit, not to a PR; tagging a PR's
 head before a squash merge can leave the tag outside `main` and fail the release
 guard. Publishing workflows are manual; merging the PR or pushing a tag alone
 does not publish a package.
+
+Serving SDK updates now arrive as automated PRs labeled `sdk-sync` and
+`release:patch`. Review the version and finalize release notes before merging;
+use a larger version bump when the change requires one. See
+[SERVING_SYNC.md](SERVING_SYNC.md). These labels do not publish or create tags.
 
 The earlier `0.1.2rc1` publisher test is recorded in
 [WORKFLOW_TEST.md](WORKFLOW_TEST.md). Use the stable commands below for this release.
@@ -53,7 +58,7 @@ The earlier `0.1.2rc1` publisher test is recorded in
      --base-url https://api.tazolabs.com --audio examples/weather.wav
    ```
 
-   The first command checks all four client modes for both models. The second
+   The first command checks all four client modes for Tazo Large. The second
    also checks that replaying an upload with its retained idempotency key
    preserves the operation. Both submit real inference. TestPyPI does not
    create a separate API deployment; use a custom origin only if one has been
@@ -71,8 +76,8 @@ Once the new version is merged and CI is green on `main`:
 ```sh
 git switch main
 git pull --ff-only origin main
-git tag sdk-v0.1.2
-git push origin sdk-v0.1.2
+git tag sdk-v0.1.3
+git push origin sdk-v0.1.3
 ```
 
 The release guard requires matching manifest/runtime versions, a matching
@@ -86,7 +91,7 @@ Actions. Dispatch **Release Python SDK** from the new tag with target `testpypi`
 
 ```sh
 gh workflow run sdk-release.yml --repo tazolabs/tazo-sdk \
-  --ref sdk-v0.1.2 -f target=testpypi
+  --ref sdk-v0.1.3 -f target=testpypi
 ```
 
 Inspect the run in the repository's Actions tab. The build job tests the wheel,
@@ -97,14 +102,14 @@ Install the new TestPyPI version in a clean Python 3.11+ environment. Use the
 same dependency ranges from `pyproject.toml`; for this example:
 
 ```sh
-python3 -m venv /tmp/tazo-sdk-testpypi-0.1.2
-source /tmp/tazo-sdk-testpypi-0.1.2/bin/activate
+python3 -m venv /tmp/tazo-sdk-testpypi-0.1.3
+source /tmp/tazo-sdk-testpypi-0.1.3/bin/activate
 env -u PIP_EXTRA_INDEX_URL -u PIP_INDEX_URL PIP_CONFIG_FILE=/dev/null \
   python -m pip install --index-url https://pypi.org/simple/ \
   'httpx>=0.27,<1' 'pydantic>=2.10,<3' 'websockets>=15,<18'
 env -u PIP_EXTRA_INDEX_URL -u PIP_INDEX_URL PIP_CONFIG_FILE=/dev/null \
   python -m pip install --index-url https://test.pypi.org/simple/ \
-  --no-deps 'tazo-sdk==0.1.2'
+  --no-deps 'tazo-sdk==0.1.3'
 python -m pip check
 python -c 'import tazo; print(tazo.__version__, tazo.__file__)'
 python examples/verify.py --audio examples/weather.wav \
@@ -121,7 +126,7 @@ After TestPyPI installation and live checks pass:
 
 ```sh
 gh workflow run sdk-release.yml --repo tazolabs/tazo-sdk \
-  --ref sdk-v0.1.2 -f target=pypi
+  --ref sdk-v0.1.3 -f target=pypi
 ```
 
 Approve the `pypi` deployment if a required reviewer is configured. Each dispatch
@@ -131,10 +136,10 @@ exact tested files from that run. Neither workflow uses `skip-existing`.
 Verify normal PyPI installation in another clean environment:
 
 ```sh
-python3 -m venv /tmp/tazo-sdk-pypi-0.1.2
-source /tmp/tazo-sdk-pypi-0.1.2/bin/activate
+python3 -m venv /tmp/tazo-sdk-pypi-0.1.3
+source /tmp/tazo-sdk-pypi-0.1.3/bin/activate
 env -u PIP_EXTRA_INDEX_URL -u PIP_INDEX_URL PIP_CONFIG_FILE=/dev/null \
-  python -m pip install --index-url https://pypi.org/simple/ 'tazo-sdk==0.1.2'
+  python -m pip install --index-url https://pypi.org/simple/ 'tazo-sdk==0.1.3'
 python -m pip check
 python -c 'import tazo; print(tazo.__version__, tazo.__file__)'
 ```

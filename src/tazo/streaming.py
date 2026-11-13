@@ -54,23 +54,32 @@ class _State:
         audio_scope: Literal["turn", "chunk"],
         evaluation_interval_ms: int | None,
         event_timeout: float,
+        *,
+        evaluation_mode: Literal["interval", "manual"] = "interval",
     ) -> None:
         if len(request.questions) != 1:
             raise InvalidRequestError("Streaming requires exactly one question.")
         if audio_scope not in {"turn", "chunk"}:
             raise InvalidRequestError("audio_scope must be turn or chunk.")
+        if evaluation_mode not in {"interval", "manual"}:
+            raise InvalidRequestError("evaluation_mode must be interval or manual.")
+        if evaluation_mode == "manual" and (
+            audio_scope != "turn" or evaluation_interval_ms is not None
+        ):
+            raise InvalidRequestError("Manual evaluation requires turn scope and no interval.")
         if evaluation_interval_ms is not None and (
             isinstance(evaluation_interval_ms, bool)
             or not isinstance(evaluation_interval_ms, int)
-            or not 100 <= evaluation_interval_ms <= 30000
+            or not 250 <= evaluation_interval_ms <= 30000
         ):
             raise InvalidRequestError(
-                "evaluation_interval_ms must be an integer from 100 to 30000."
+                "evaluation_interval_ms must be an integer from 250 to 30000."
             )
         if not math.isfinite(event_timeout) or event_timeout <= 0:
             raise ValueError("event_timeout must be positive and finite.")
         self.request = request
         self.audio_scope = audio_scope
+        self.evaluation_mode = evaluation_mode
         self.interval = evaluation_interval_ms
         self.event_timeout = event_timeout
         self.phase = "new"
@@ -88,12 +97,18 @@ class _State:
         }
         if self.interval is not None:
             payload["evaluation_interval_ms"] = self.interval
+        if self.evaluation_mode == "manual":
+            payload["evaluation_mode"] = self.evaluation_mode
         return json.dumps(payload)
 
     def initialize(self, raw: str | bytes) -> None:
         event = self.parse(raw)
         if not isinstance(event, SessionReady):
             raise ProtocolError("Expected session.ready before audio.")
+        if self.evaluation_mode == "manual" and (
+            event.evaluation_mode != "manual" or event.evaluation_interval_ms is not None
+        ):
+            raise ProtocolError("The server did not accept manual evaluation.")
         self.ready = event
         self.sequence = event.sequence
         self.phase = "idle"
@@ -135,7 +150,8 @@ class _State:
                 if event.session_id != self.ready.session_id:
                     raise ProtocolError("Received an event for another streaming session.")
         if isinstance(event, DecisionEvent) and event.type == "decision.finalized":
-            self.audio_bytes = 0
+            if self.evaluation_mode == "interval":
+                self.audio_bytes = 0
             if self.phase != "finishing":
                 self.phase = "idle"
         elif isinstance(event, SessionUpdated):
@@ -144,10 +160,19 @@ class _State:
             self.phase = "closed"
         elif isinstance(event, ErrorEvent) and self.phase == "updating":
             self.phase = "idle"
+        elif (
+            isinstance(event, ErrorEvent)
+            and self.evaluation_mode == "manual"
+            and self.phase == "finalizing"
+        ):
+            self.phase = "collecting"
         return event
 
     def validate_audio(self, audio: bytes) -> None:
-        if self.phase not in {"idle", "collecting"} or self.ready is None:
+        allowed = {"idle", "collecting"}
+        if self.evaluation_mode == "manual":
+            allowed.update({"finalizing", "updating"})
+        if self.phase not in allowed or self.ready is None:
             raise InvalidRequestError("Wait for the session or turn acknowledgement before audio.")
         if not isinstance(audio, bytes) or not audio or len(audio) % 2:
             raise InvalidRequestError("Send nonempty, even-length PCM16 bytes without WAV headers.")
@@ -156,7 +181,8 @@ class _State:
                 "Audio message exceeds session.ready.max_audio_message_bytes."
             )
         if (
-            self.ready.max_turn_audio_ms is not None
+            self.evaluation_mode == "interval"
+            and self.ready.max_turn_audio_ms is not None
             and (self.audio_bytes + len(audio)) * 1000 > self.ready.max_turn_audio_ms * 32000
         ):
             raise InvalidRequestError("Commit before exceeding session.ready.max_turn_audio_ms.")
@@ -167,8 +193,40 @@ class _State:
         *,
         state: StructuredValue | None = None,
         questions: QuestionsInput | None = None,
+        audio_start_sample: int | None = None,
+        audio_end_sample: int | None = None,
     ) -> str:
         if kind == "input.commit":
+            if self.evaluation_mode == "manual":
+                if self.phase not in {"idle", "collecting"}:
+                    raise InvalidRequestError(
+                        "Wait for decision.finalized before committing another range."
+                    )
+                if (
+                    type(audio_start_sample) is not int
+                    or type(audio_end_sample) is not int
+                    or not 0 <= audio_start_sample < audio_end_sample <= self.audio_bytes // 2
+                ):
+                    raise InvalidRequestError(
+                        "Provide integer sample bounds within audio already sent."
+                    )
+                if (
+                    self.ready is not None
+                    and self.ready.max_turn_audio_ms is not None
+                    and (audio_end_sample - audio_start_sample) * 1000
+                    > self.ready.max_turn_audio_ms * 16000
+                ):
+                    raise InvalidRequestError("The selected audio range exceeds the turn limit.")
+                self.phase = "finalizing"
+                return json.dumps(
+                    {
+                        "type": kind,
+                        "audio_start_sample": audio_start_sample,
+                        "audio_end_sample": audio_end_sample,
+                    }
+                )
+            if audio_start_sample is not None or audio_end_sample is not None:
+                raise InvalidRequestError("Sample-range commits require manual evaluation.")
             if self.phase != "collecting":
                 raise InvalidRequestError(
                     "Send audio before commit; wait for finalized before another turn."
@@ -180,7 +238,10 @@ class _State:
                 raise InvalidRequestError("The session cannot finish in its current state.")
             self.phase = "finishing"
             return json.dumps({"type": kind})
-        if self.phase != "idle" or state is None or questions is None:
+        can_update = self.phase == "idle" or (
+            self.evaluation_mode == "manual" and self.phase == "collecting"
+        )
+        if not can_update or state is None or questions is None:
             raise InvalidRequestError("Update both state and questions between turns.")
         request = decision_request(self.request.model, state, questions)
         if len(request.questions) != 1:
@@ -267,12 +328,28 @@ class StreamingSession(Iterator[StreamEvent]):
             self._state.validate_audio(audio)
             self._send(audio)
             self._state.audio_bytes += len(audio)
-            self._state.phase = "collecting"
+            if self._state.phase not in {"finalizing", "updating"}:
+                self._state.phase = "collecting"
 
-    def commit(self) -> None:
-        """Complete the turn; consume decision.finalized before sending more audio."""
+    def commit(
+        self,
+        *,
+        audio_start_sample: int | None = None,
+        audio_end_sample: int | None = None,
+    ) -> None:
+        """Complete a turn, or select source sample bounds in manual mode.
+
+        Manual audio may continue while awaiting decision.finalized. Wait for
+        that event before committing another range. Bounds never reset.
+        """
         with self._send_lock:
-            self._send(self._state.control("input.commit"))
+            self._send(
+                self._state.control(
+                    "input.commit",
+                    audio_start_sample=audio_start_sample,
+                    audio_end_sample=audio_end_sample,
+                )
+            )
 
     def update(self, *, state: StructuredValue, questions: QuestionsInput) -> None:
         """Replace context and question between turns; consume session.updated."""
@@ -401,12 +478,24 @@ class AsyncStreamingSession(AsyncIterator[StreamEvent]):
             self._state.validate_audio(audio)
             await self._send(audio)
             self._state.audio_bytes += len(audio)
-            self._state.phase = "collecting"
+            if self._state.phase not in {"finalizing", "updating"}:
+                self._state.phase = "collecting"
 
-    async def commit(self) -> None:
-        """Complete the turn; await decision.finalized through the iterator."""
+    async def commit(
+        self,
+        *,
+        audio_start_sample: int | None = None,
+        audio_end_sample: int | None = None,
+    ) -> None:
+        """Commit a turn or manual sample range; consume decision.finalized."""
         async with self._send_lock:
-            await self._send(self._state.control("input.commit"))
+            await self._send(
+                self._state.control(
+                    "input.commit",
+                    audio_start_sample=audio_start_sample,
+                    audio_end_sample=audio_end_sample,
+                )
+            )
 
     async def update(self, *, state: StructuredValue, questions: QuestionsInput) -> None:
         """Replace state and questions; await session.updated through the iterator."""

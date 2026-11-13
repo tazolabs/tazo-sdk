@@ -151,6 +151,22 @@ Set it explicitly in existing integrations that require a final decision over
 the complete recording. `examples/verify.py` does this for its whole-recording
 checks. The SDK continues to send mono 16 kHz PCM16 streaming audio.
 
+## Manual evaluation at utterance boundaries
+
+Open a stream with `audio_scope="turn", evaluation_mode="manual"` and omit
+`evaluation_interval_ms`. Continue sending audio while your external VAD or
+webhook handler calls
+`session.commit(audio_start_sample=88000, audio_end_sample=100000)`.
+For SDK audio at 16 kHz, this selects 5.5–6.25 seconds. The end is exclusive;
+sample positions count from the start of the connection and never reset.
+The async client accepts the same arguments with `await`.
+
+Each commit produces one `decision.finalized` with `input_audio_range`. Audio
+can continue during inference; wait for that final event before another commit.
+There are no periodic decisions. `finish()` drains accepted work and closes
+without evaluating an uncommitted tail. The existing interval mode remains the
+default. See the [streaming guide](https://docs.tazolabs.com/sdk/python/streaming).
+
 ## Retries and errors
 
 Each `decisions.create()` call generates a UUID operation key, unless you supply
@@ -213,15 +229,8 @@ default authorization headers if health requests must remain unauthenticated.
 
 ## Verify the published SDK
 
-This checkout prepares **0.1.2** for the updated streaming API. Follow
-[RELEASING.md](RELEASING.md) to publish the reviewed tag **`sdk-v0.1.2`** to
-TestPyPI, verify it, and then publish to PyPI. Until publication completes,
-`pip install tazo-sdk` still selects stable 0.1.1. After publication, use an
-explicit `tazo-sdk==0.1.2` pin when verifying this release.
-
-The historical import hashes in
-[compatibility/published-0.1.1.json](compatibility/published-0.1.1.json) record the
-original migration. Version 0.1.2 includes the streaming changes described above.
+Install a published version from PyPI, or follow [RELEASING.md](RELEASING.md)
+to publish the next reviewed SDK version through TestPyPI first.
 
 With the published package installed and `TAZO_API_KEY` set, run from this checkout:
 
@@ -231,7 +240,7 @@ python examples/verify.py --audio examples/weather.wav \
 ```
 
 This exercises sync upload, sync streaming, async upload, and async streaming
-for both models. It submits real inference work. Expect `Summary: 8/8 passed`
+for Tazo Large. It submits real inference work. Expect `Summary: 4/4 passed`
 for the supplied weather recording. See [examples/README.md](examples/README.md)
 for audio requirements, expected-answer checks, and JSON reports.
 
@@ -273,9 +282,9 @@ set up and use this SDK.
 ## Repository setup and releases
 
 Maintainers moving publication to this repository should follow [SETUP.md](SETUP.md).
-The publishing workflow was tested with `0.1.2rc1`. The next stable release is
-`0.1.2`; its tag is `sdk-v0.1.2`. Tags are created after the preparation PR is
-merged and CI passes on `main`. Published versions and tags must remain fixed.
+Implementation updates are synchronized from `tazolabs/tazo-serving` through
+automated, labeled PRs. See [SERVING_SYNC.md](SERVING_SYNC.md) for the workflow
+and local export commands. Versions and publication belong to this repository.
 
 See [RELEASING.md](RELEASING.md) for future releases. API v1 and SDK versions are
 independent. This beta may change its Python interface before 1.0; changes are

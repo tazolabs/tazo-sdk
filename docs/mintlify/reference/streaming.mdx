@@ -52,10 +52,18 @@ Send one raw PCM16 message, applying the server-advertised limits.
 #### commit()
 
 ```python
-commit()
+commit(*, audio_start_sample=None, audio_end_sample=None)
 ```
 
-Complete the turn; consume decision.finalized before sending more audio.
+Complete a turn, or select source sample bounds in manual mode.
+
+Manual audio may continue while awaiting decision.finalized. Wait for that event before committing another range. Bounds never reset.
+
+* Parameters:
+
+  * **audio_start_sample** (*int*  *|*_None_)
+
+  * **audio_end_sample** (*int*  *|*_None_)
 
 * Return type:
 
@@ -160,10 +168,16 @@ Send one PCM16 message; the send applies transport backpressure.
 #### commit()
 
 ```python
-async commit()
+async commit(*, audio_start_sample=None, audio_end_sample=None)
 ```
 
-Complete the turn; await decision.finalized through the iterator.
+Commit a turn or manual sample range; consume decision.finalized.
+
+* Parameters:
+
+  * **audio_start_sample** (*int*  *|*_None_)
+
+  * **audio_end_sample** (*int*  *|*_None_)
 
 * Return type:
 

@@ -3,10 +3,141 @@ import json
 import threading
 
 import pytest
-from conftest import PCM, QUESTIONS, ready
+from conftest import PCM, QUESTIONS, decision, ready
 
 from tazo import AsyncTazo, InvalidRequestError, ProtocolError, StreamingError, Tazo, wav_chunks
 from tazo.types import ErrorEvent, UnknownEvent
+
+
+@pytest.mark.parametrize("scope", [None, "turn"])
+@pytest.mark.parametrize("mode", [None, "interval"])
+def test_default_sdk_preserves_legacy_start_and_commit_messages(websocket_server, scope, mode):
+    options = {}
+    if scope is not None:
+        options["audio_scope"] = scope
+    if mode is not None:
+        options["evaluation_mode"] = mode
+    with websocket_server() as (url, calls), Tazo(base_url=url, api_key="test-key") as sdk:
+        with sdk.decisions.stream(state="context", questions=QUESTIONS, **options) as session:
+            session.send_audio(PCM)
+            session.commit()
+            assert next(session).type == "decision.updated"
+            assert next(session).type == "decision.finalized"
+            session.finish()
+            assert [event.type for event in session] == ["session.closed"]
+    assert calls[0] == {
+        "type": "session.start",
+        "authorization": "Bearer test-key",
+        "model": "tazo-large",
+        "state": "context",
+        "questions": QUESTIONS,
+        "audio_scope": scope or "chunk",
+        "input_audio": {"encoding": "pcm_s16le", "sample_rate_hz": 16000, "channels": 1},
+    }
+    assert [json.loads(call) for call in calls[1:] if isinstance(call, str)] == [
+        {"type": "input.commit"},
+        {"type": "input.finish"},
+    ]
+
+
+@pytest.mark.parametrize("async_mode", [False, True])
+def test_manual_stream_preserves_connection_sample_clock_and_allows_audio_during_inference(
+    websocket_server, async_mode
+):
+    def handler(socket, start):
+        assert start["evaluation_mode"] == "manual"
+        assert "evaluation_interval_ms" not in start
+        socket.send(
+            json.dumps(
+                ready(
+                    evaluation_mode="manual", evaluation_interval_ms=None, audio_retention_ms=60000
+                )
+            )
+        )
+        assert socket.recv() == PCM
+        assert json.loads(socket.recv()) == {
+            "type": "input.commit",
+            "audio_start_sample": 0,
+            "audio_end_sample": 1600,
+        }
+        assert socket.recv() == PCM  # Remains legal before the result is read.
+        for turn, first, last, sequence in [(1, 0, 1600, 2), (2, 1600, 3200, 3)]:
+            if turn == 2:
+                assert json.loads(socket.recv()) == {
+                    "type": "input.commit",
+                    "audio_start_sample": first,
+                    "audio_end_sample": last,
+                }
+            socket.send(
+                json.dumps(
+                    decision(
+                        type="decision.finalized",
+                        session_id="ses_test",
+                        sequence=sequence,
+                        turn_id=f"turn_{turn}",
+                        config_revision=1,
+                        audio_start_ms=0,
+                        audio_end_ms=100,
+                        input_audio_range={
+                            "start_sample": first,
+                            "end_sample": last,
+                            "sample_rate_hz": 16000,
+                        },
+                    )
+                )
+            )
+        assert json.loads(socket.recv()) == {"type": "input.finish"}
+        socket.send(json.dumps({"type": "session.closed", "session_id": "ses_test", "sequence": 4}))
+
+    async def run(url):
+        async with AsyncTazo(base_url=url, api_key="test-key") as sdk:
+            async with sdk.decisions.stream(
+                state="s", questions=QUESTIONS, audio_scope="turn", evaluation_mode="manual"
+            ) as session:
+                await session.send_audio(PCM)
+                with pytest.raises(InvalidRequestError):
+                    await session.commit()
+                await session.commit(audio_start_sample=0, audio_end_sample=1600)
+                await session.send_audio(PCM)
+                first = await anext(session)
+                assert first.input_audio_range.start_sample == 0
+                await session.commit(audio_start_sample=1600, audio_end_sample=3200)
+                assert (await anext(session)).input_audio_range.end_sample == 3200
+                await session.finish()
+                assert [event.type async for event in session] == ["session.closed"]
+
+    with websocket_server(handler) as (url, _):
+        if async_mode:
+            asyncio.run(run(url))
+        else:
+            with Tazo(base_url=url, api_key="test-key") as sdk:
+                with sdk.decisions.stream(
+                    state="s", questions=QUESTIONS, audio_scope="turn", evaluation_mode="manual"
+                ) as session:
+                    session.send_audio(PCM)
+                    with pytest.raises(InvalidRequestError):
+                        session.commit()
+                    session.commit(audio_start_sample=0, audio_end_sample=1600)
+                    session.send_audio(PCM)
+                    assert next(session).input_audio_range.start_sample == 0
+                    session.commit(audio_start_sample=1600, audio_end_sample=3200)
+                    assert next(session).input_audio_range.end_sample == 3200
+                    session.finish()
+                    assert [event.type for event in session] == ["session.closed"]
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"audio_scope": "chunk", "evaluation_mode": "manual"},
+        {"audio_scope": "turn", "evaluation_mode": "manual", "evaluation_interval_ms": 1000},
+        {"evaluation_mode": "unknown"},
+    ],
+)
+def test_sdk_rejects_invalid_evaluation_mode_configuration(overrides):
+    with Tazo(api_key="test-key") as sdk:
+        with pytest.raises(InvalidRequestError):
+            sdk.decisions.stream(state="s", questions=QUESTIONS, **overrides)
 
 
 @pytest.mark.parametrize("scope", ["turn", "chunk"])
@@ -215,7 +346,7 @@ def test_server_turn_limit_and_invalid_stream_configuration(websocket_server):
             pass
 
     with websocket_server(handler) as (url, calls), Tazo(base_url=url, api_key="test-key") as sdk:
-        for interval in (0, 99, 30001, True, 1.5):
+        for interval in (0, 100, 240, 249, 30001, True, 1.5):
             with pytest.raises(InvalidRequestError):
                 sdk.decisions.stream(
                     state="s", questions=QUESTIONS, evaluation_interval_ms=interval
@@ -225,6 +356,30 @@ def test_server_turn_limit_and_invalid_stream_configuration(websocket_server):
             with pytest.raises(InvalidRequestError, match="max_turn"):
                 session.send_audio(PCM)
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("interval", [250, 510, 1000, 30000])
+@pytest.mark.parametrize("async_mode", [False, True])
+def test_valid_integer_interval_is_sent_unchanged(websocket_server, interval, async_mode):
+    async def run(url):
+        async with AsyncTazo(base_url=url, api_key="test-key") as sdk:
+            async with sdk.decisions.stream(
+                state="s", questions=QUESTIONS, evaluation_interval_ms=interval
+            ) as session:
+                await session.finish()
+                assert [event.type async for event in session] == ["session.closed"]
+
+    with websocket_server() as (url, calls):
+        if async_mode:
+            asyncio.run(run(url))
+        else:
+            with Tazo(base_url=url, api_key="test-key") as sdk:
+                with sdk.decisions.stream(
+                    state="s", questions=QUESTIONS, evaluation_interval_ms=interval
+                ) as session:
+                    session.finish()
+                    assert [event.type for event in session] == ["session.closed"]
+    assert calls[0]["evaluation_interval_ms"] == interval
 
 
 @pytest.mark.parametrize("async_mode", [False, True])
@@ -267,37 +422,6 @@ def test_default_chunk_stream_allows_continuous_audio(websocket_server, async_mo
     assert audio == [PCM] * 650
 
 
-@pytest.mark.parametrize("async_mode", [False, True])
-@pytest.mark.parametrize("scope", ["turn", "chunk"])
-def test_numeric_duration_limit_still_applies_in_both_clients(websocket_server, async_mode, scope):
-    def handler(socket, start):
-        assert start["audio_scope"] == scope
-        socket.send(json.dumps(ready(max_turn_audio_ms=100, audio_scope=scope)))
-        for _ in socket:
-            pass
-
-    async def run(url):
-        async with AsyncTazo(base_url=url, api_key="test-key") as sdk:
-            async with sdk.decisions.stream(
-                state="s", questions=QUESTIONS, audio_scope=scope
-            ) as session:
-                await session.send_audio(PCM)
-                with pytest.raises(InvalidRequestError, match="max_turn_audio_ms"):
-                    await session.send_audio(PCM)
-
-    with websocket_server(handler) as (url, _):
-        if async_mode:
-            asyncio.run(run(url))
-        else:
-            with Tazo(base_url=url, api_key="test-key") as sdk:
-                with sdk.decisions.stream(
-                    state="s", questions=QUESTIONS, audio_scope=scope
-                ) as session:
-                    session.send_audio(PCM)
-                    with pytest.raises(InvalidRequestError, match="max_turn_audio_ms"):
-                        session.send_audio(PCM)
-
-
 def test_wav_helper_and_invalid_chunks(wav_file):
     assert list(wav_chunks(wav_file)) == [PCM] * 3
     assert b"".join(wav_chunks(wav_file, chunk_ms=200)) == PCM * 3
@@ -336,3 +460,34 @@ def test_explicit_async_close_unblocks_receiver(websocket_server):
 
     with websocket_server() as (url, calls):
         asyncio.run(run(url))
+
+
+@pytest.mark.parametrize("async_mode", [False, True])
+@pytest.mark.parametrize("scope", ["turn", "chunk"])
+def test_numeric_duration_limit_still_applies_in_both_clients(websocket_server, async_mode, scope):
+    def handler(socket, start):
+        assert start["audio_scope"] == scope
+        socket.send(json.dumps(ready(max_turn_audio_ms=100, audio_scope=scope)))
+        for _ in socket:
+            pass
+
+    async def run(url):
+        async with AsyncTazo(base_url=url, api_key="test-key") as sdk:
+            async with sdk.decisions.stream(
+                state="s", questions=QUESTIONS, audio_scope=scope
+            ) as session:
+                await session.send_audio(PCM)
+                with pytest.raises(InvalidRequestError, match="max_turn_audio_ms"):
+                    await session.send_audio(PCM)
+
+    with websocket_server(handler) as (url, _):
+        if async_mode:
+            asyncio.run(run(url))
+        else:
+            with Tazo(base_url=url, api_key="test-key") as sdk:
+                with sdk.decisions.stream(
+                    state="s", questions=QUESTIONS, audio_scope=scope
+                ) as session:
+                    session.send_audio(PCM)
+                    with pytest.raises(InvalidRequestError, match="max_turn_audio_ms"):
+                        session.send_audio(PCM)

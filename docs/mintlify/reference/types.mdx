@@ -250,7 +250,7 @@ Streaming audio format negotiated by the server.
 ### SessionReady
 
 ```python
-class tazo.types.SessionReady(*, type, session_id, sequence, model, config_revision, input_audio, evaluation_interval_ms, max_turn_audio_ms, max_audio_message_bytes, audio_scope, **extra_data)
+class tazo.types.SessionReady(*, type, session_id, sequence, model, config_revision, input_audio, evaluation_interval_ms, max_turn_audio_ms, max_audio_message_bytes, audio_scope, evaluation_mode='interval', audio_retention_ms=None, **extra_data)
 ```
 
 Configuration accepted; available as the session’s `ready` attribute.
@@ -269,13 +269,17 @@ Configuration accepted; available as the session’s `ready` attribute.
 
   * **input_audio** ([*AudioFormat*](#tazo.types.AudioFormat "tazo.types.AudioFormat"))
 
-  * **evaluation_interval_ms** (*int*)
+  * **evaluation_interval_ms** (*int*  *|*_None_)
 
   * **max_turn_audio_ms** (*int*  *|*_None_)
 
   * **max_audio_message_bytes** (*int*)
 
   * **audio_scope** (*Literal*_\[_*'turn'*_,_ *'chunk'*_]_)
+
+  * **evaluation_mode** (*Literal*_\[_*'interval'*_,_ *'manual'*_]_)
+
+  * **audio_retention_ms** (*int*  *|*_None_)
 
   * **extra_data** (*Any*)
 
@@ -299,10 +303,28 @@ Replacement context and question accepted between turns.
 
   * **extra_data** (*Any*)
 
+### InputAudioRange
+
+```python
+class tazo.types.InputAudioRange(*, start_sample, end_sample, sample_rate_hz, **extra_data)
+```
+
+Source sample positions measured from the start of the connection.
+
+* Parameters:
+
+  * **start_sample** (*int*)
+
+  * **end_sample** (*int*)
+
+  * **sample_rate_hz** (*int*)
+
+  * **extra_data** (*Any*)
+
 ### DecisionEvent
 
 ```python
-class tazo.types.DecisionEvent(*, id, model, answers, usage, elapsed_ms, request_id=None, idempotency_key=None, type, session_id, sequence, turn_id, config_revision, audio_start_ms=0, audio_end_ms, **extra_data)
+class tazo.types.DecisionEvent(*, id, model, answers, usage, elapsed_ms, request_id=None, idempotency_key=None, type, session_id, sequence, turn_id, config_revision, audio_start_ms=0, audio_end_ms, input_audio_range=None, **extra_data)
 ```
 
 Provisional or final decision for the reported audio window.
@@ -336,6 +358,8 @@ Provisional or final decision for the reported audio window.
   * **audio_start_ms** (*float*)
 
   * **audio_end_ms** (*float*)
+
+  * **input_audio_range** ([*InputAudioRange*](#tazo.types.InputAudioRange "tazo.types.InputAudioRange")  *|*_None_)
 
   * **extra_data** (*Any*)
 

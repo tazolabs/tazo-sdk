@@ -60,7 +60,7 @@ Upload audio and wait for a typed decision.
 #### stream()
 
 ```python
-stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65)
+stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_mode='interval', evaluation_interval_ms=None, event_timeout=65)
 ```
 
 Create a context-managed session for one question and multiple turns.
@@ -75,7 +75,9 @@ Create a context-managed session for one question and multiple turns.
 
   * **audio_scope** (*Literal*_\[_*'turn'*_,_ *'chunk'*_]_) – chunk (default) evaluates new audio; turn evaluates cumulative audio.
 
-  * **evaluation_interval_ms** (*int*  *|*_None_) – Integer from 100 to 30000, or server default.
+  * **evaluation_mode** (*Literal*_\[_*'interval'*_,_ *'manual'*_]_) – interval (default), or manual with turn scope and sample-range commits.
+
+  * **evaluation_interval_ms** (*int*  *|*_None_) – Integer from 250 to 30000, or server default.
 
   * **event_timeout** (*float*) – Maximum seconds waiting for each server event.
 
@@ -132,7 +134,7 @@ File reads run in a worker thread; HTTP uses native asynchronous I/O. Cancellati
 #### stream()
 
 ```python
-stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_interval_ms=None, event_timeout=65)
+stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_mode='interval', evaluation_interval_ms=None, event_timeout=65)
 ```
 
 Create an async context manager; use async for to receive typed events.
@@ -148,6 +150,8 @@ Parameters match Decisions.stream. This method isn’t awaited; use `async with 
   * **model** (*str*)
 
   * **audio_scope** (*Literal*_\[_*'turn'*_,_ *'chunk'*_]_)
+
+  * **evaluation_mode** (*Literal*_\[_*'interval'*_,_ *'manual'*_]_)
 
   * **evaluation_interval_ms** (*int*  *|*_None_)
 

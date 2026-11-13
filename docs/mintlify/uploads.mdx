@@ -30,8 +30,9 @@ choice = ChoiceQuestion(
 yes_no = NoulQuestion(instructions="Is the speaker asking for help?")
 ```
 
-Tazo Large supports one `choice` or `noul`; Tazo Small supports one `choice`
-with `NO_TOOL`. Check `client.models.list()` for current capabilities. This SDK
+Tazo Large supports one `choice` or `noul`. Tazo Small is unavailable through
+the API; contact [support@tazolabs.com](mailto:support@tazolabs.com) for assistance.
+Check `client.models.list()` for current capabilities. This SDK
 does not expose score questions.
 
 Each create call generates a new operation key. Supply `idempotency_key` to

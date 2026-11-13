@@ -42,9 +42,8 @@ async def stream_audio():
 asyncio.run(stream_audio())
 ```
 
-The SDK declares mono 16 kHz PCM16 input. `wav_chunks` validates matching WAV
-files and emits raw samples without headers. Its default chunk is 100 ms.
-It neither resamples nor paces audio; the
+`wav_chunks` validates mono, 16 kHz, PCM16 WAV files and emits raw samples without
+headers. Its default chunk is 100 ms. It neither resamples nor paces audio; the
 example adds microphone-speed pacing. In chunk mode, `session.ready.max_turn_audio_ms`
 is `None` and no periodic commits are required. If the server returns a numeric
 limit, divide recordings into turns within it. Sending faster can fill the pending
@@ -52,10 +51,8 @@ audio buffer and does not guarantee lower latency.
 
 The default `audio_scope="chunk"` evaluates new audio only; its final event covers
 the last window. Set `audio_scope="turn"` explicitly to evaluate cumulative audio.
-Before SDK 0.1.2, turn mode was the default. Set it explicitly when upgrading
-an integration that needs a final decision covering the whole recording.
-`evaluation_interval_ms` accepts an integer from 100 to 30000; omission uses the
-server default. Each evaluation shares the account's inference allowance.
+`evaluation_interval_ms` accepts an integer from 250 to 30000; omission uses the
+1,000 ms server default. Values such as `510` are valid; `240` is rejected. Each evaluation shares the account's inference allowance.
 
 | Method | Required acknowledgement before more audio |
 | --- | --- |
@@ -73,3 +70,27 @@ sender thread while the main thread iterates. Propagate producer failures and
 close the session to unblock its receiver. Close streaming contexts before their
 parent client. Context exit closes immediately and does not cancel accepted work.
 See the [protocol reference](/api-reference/streaming/decisions).
+
+## External turn boundaries
+
+Open the session with `audio_scope="turn", evaluation_mode="manual"` and omit
+`evaluation_interval_ms`. The audio producer continues calling `send_audio` while
+your webhook/VAD handler submits source-sample bounds with
+`await session.commit(audio_start_sample=32000, audio_end_sample=83200)`.
+
+The SDK currently sends 16 kHz PCM16, so this selects 2.0–5.2 seconds. Both integer
+bounds are required; the end is exclusive. Positions count samples since the
+connection started and never reset. Audio through the end must already be sent.
+
+Continue consuming events in the receiver task. Each commit returns one
+`decision.finalized`, whose `input_audio_range` identifies the selected source
+samples. There are no periodic updates. Audio may continue during inference;
+wait for the final event before submitting another commit. Nonfatal range errors
+leave the connection usable for a corrected commit. `session.ready.audio_retention_ms`
+advertises the rolling history window. The turn duration limit applies to each
+selection, not to all audio sent during the call.
+
+`finish()` drains active work and closes without inferring any uncommitted tail.
+Set `event_timeout` to accommodate the longest expected wait between utterances;
+manual mode emits no periodic events while waiting for a trigger.
+The synchronous client supports the same keyword arguments without `await`.

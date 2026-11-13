@@ -155,8 +155,6 @@ def test_explicit_staging_smoke_uses_only_public_apis(wav_file, websocket_server
     with websocket_server() as (url, sockets):
         asyncio.run(run(url))
     uploads = [r for r in calls if r.method == "POST"]
-    assert len(uploads) == 4
+    assert len(uploads) == 2
     assert uploads[0].headers["Idempotency-Key"] == uploads[1].headers["Idempotency-Key"]
-    assert uploads[2].headers["Idempotency-Key"] == uploads[3].headers["Idempotency-Key"]
-    assert uploads[0].headers["Idempotency-Key"] != uploads[2].headers["Idempotency-Key"]
-    assert len([start for start in sockets if isinstance(start, dict)]) == 2
+    assert len([start for start in sockets if isinstance(start, dict)]) == 1
