@@ -410,11 +410,10 @@ components:
             oneOf:
             - $ref: '#/components/schemas/ChoiceQuestion'
             - $ref: '#/components/schemas/NoulQuestion'
-          maxProperties: 1
           minProperties: 1
           title: Questions
           type: object
-          description: Exactly one question. Use Tazo Large. Tazo Small is unavailable through the API;
+          description: At least one question, up to the selected model's capabilities.max_questions limit from /v1/models. Use Tazo Large. Tazo Small is unavailable through the API;
             requests receive a fatal model_unavailable error and close code 1008. Contact support@tazolabs.com for assistance.
         type:
           const: session.start
@@ -483,7 +482,6 @@ components:
             oneOf:
             - $ref: '#/components/schemas/ChoiceQuestion'
             - $ref: '#/components/schemas/NoulQuestion'
-          maxProperties: 1
           minProperties: 1
           title: Questions
           type: object

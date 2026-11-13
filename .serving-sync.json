@@ -1,11 +1,11 @@
 {
   "source_repository": "tazolabs/tazo-serving",
-  "source_commit": "52fe63a2088a3e2aa04dcf2305a56cc6bde4e348",
+  "source_commit": "3f829784f46e3726a13586b6457630a68785a9ec",
   "files": {
     "LICENSE": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     "README.md": "1bd1d4156217d5a5a388aa0e34080ec5bd96c08ebe8a58d41a16db600638177d",
     "SERVING_SYNC.md": "f54a26052b309433771773aa19a055db5d8d4ab293b4c00ce5fa25e9d1609673",
-    "api/asyncapi.yaml": "239546e83db93ea60655141dc8ed1d753fec774ab311b06b8d4c3380653bed95",
+    "api/asyncapi.yaml": "968425e345b4c865a43f632029ee79276a3d98b2d3cdcd27413c55ba7cc9e465",
     "api/openapi.yaml": "c4399f329a803c1dd7d42ba53b2ace113d999f45aa130036632c135f10b1a5ae",
     "docs/mintlify/async.mdx": "54fb5f26ed489dd726b29b21e45619f6e367a6fde00f992dca499cd1e8ed2ee7",
     "docs/mintlify/configuration.mdx": "959d7cb20e3644c1c643f982bfdecbd9ddc4f7adcf9d69da0b40374056e232d9",
@@ -27,7 +27,7 @@
     "examples/upload.py": "9394c59d02b7f61fc0e6b3cde0c6913fcb9a99114a79d62ab55e8872849d9d9c",
     "examples/verify.py": "bc602135ee952ee8136c091fcf3dfc4bd7c02f506ecfd57fdd0a5ded56755b7d",
     "examples/weather.wav": "12885a82d9589c1bf457fb3f9f5fd2203e2c6c9796857ea49d5855141b4b40b7",
-    "pyproject.toml": "ba7726b3720b17e1f90f91acb5059243a90c135342e9612537962dc3bbfbd751",
+    "pyproject.toml": "04669395dfc29c1892c46efec1c777f5d1387e082d9af7bd55f3fdc97486f9c3",
     "src/tazo/__init__.py": "8e6fe96928efb4403cca29ba71c8b6cc41fd37b96c1bbdec7fdd4f913a16a067",
     "src/tazo/_audio.py": "99299a599d2469b08d06a307fdbdcb4ed0bd80285b589d2ef7a2fa8b90d67972",
     "src/tazo/_http.py": "0e6100d3de5ee3c9b945d2decf75b21242bb1daf43da974c7dcaa0d89b311225",
@@ -35,11 +35,12 @@
     "src/tazo/errors.py": "054414154ee4ecb030877461ad93fd4563d226a1a625dc17813be006d08e7224",
     "src/tazo/py.typed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "src/tazo/resources.py": "d064ed909e8a6e77c849a422c8416143dd38c5850ae6c36bca981fce1fcb8c9d",
-    "src/tazo/streaming.py": "2ae3d02fe2f714c9608f7e9a2c30dbb259c16bb27a5d6a460caf7229fac52ba6",
+    "src/tazo/streaming.py": "58f1ddf8b88ec144be570b84fabc43cd3e6c2bfd6707403690234a1b6b60f110",
     "src/tazo/types.py": "c3cf6c76dc55213695f6d11bdb396b0304556775c26bd078a15a7d290bcd9b2d",
     "tests/test_documentation.py": "d3f47e8a7758289d8cba7ff9bcc750173b403ee72d818c5bf2f40a17fd5f4f17",
     "tests/test_http.py": "4c9ce71ecb3e62353c39d712bdea1b0bcfea6462595959cd8f9a3d185e6004d7",
     "tests/test_public_contract.py": "d45985bf21768a521af53ed0d5860c405169f23956e768fa65098b8d00b34add",
+    "tests/test_sdk_multiquestion_streaming.py": "30ab240961d864cdff9768857b27c4211e9a6f42031afcbc895ccd83f28409b9",
     "tests/test_sdk_streaming.py": "b89dcb72dd00e06e8ae170520a66fb046087f804ffe8d594aa8221f3f7b52949"
   }
 }
