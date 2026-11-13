@@ -282,9 +282,9 @@ set up and use this SDK.
 ## Repository setup and releases
 
 Maintainers moving publication to this repository should follow [SETUP.md](SETUP.md).
-Implementation updates are synchronized from `tazolabs/tazo-serving` through
-automated, labeled PRs. See [SERVING_SYNC.md](SERVING_SYNC.md) for the workflow
-and local export commands. Versions and publication belong to this repository.
+SDK updates arrive through automated, labeled pull requests. See
+[SDK_SYNC.md](SDK_SYNC.md) for the review workflow. Versions and publication
+belong to this repository.
 
 See [RELEASING.md](RELEASING.md) for future releases. API v1 and SDK versions are
 independent. This beta may change its Python interface before 1.0; changes are

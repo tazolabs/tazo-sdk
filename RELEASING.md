@@ -13,10 +13,10 @@ head before a squash merge can leave the tag outside `main` and fail the release
 guard. Publishing workflows are manual; merging the PR or pushing a tag alone
 does not publish a package.
 
-Serving SDK updates now arrive as automated PRs labeled `sdk-sync` and
+SDK updates arrive as automated PRs labeled `sdk-sync` and
 `release:patch`. Review the version and finalize release notes before merging;
 use a larger version bump when the change requires one. See
-[SERVING_SYNC.md](SERVING_SYNC.md). These labels do not publish or create tags.
+[SDK_SYNC.md](SDK_SYNC.md). These labels do not publish or create tags.
 
 The earlier `0.1.2rc1` publisher test is recorded in
 [WORKFLOW_TEST.md](WORKFLOW_TEST.md). Use the stable commands below for this release.
