@@ -73,6 +73,12 @@ See the [protocol reference](/api-reference/streaming/decisions).
 
 ## External turn boundaries
 
+Use **tazo-sdk 0.1.4 or newer** for manual source-range triggers:
+
+```bash
+python -m pip install --upgrade 'tazo-sdk>=0.1.4'
+```
+
 Open the session with `audio_scope="turn", evaluation_mode="manual"` and omit
 `evaluation_interval_ms`. The audio producer continues calling `send_audio` while
 your webhook/VAD handler submits source-sample bounds with
