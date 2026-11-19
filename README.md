@@ -153,6 +153,12 @@ checks. The SDK continues to send mono 16 kHz PCM16 streaming audio.
 
 ## Manual evaluation at utterance boundaries
 
+Use version **0.1.4 or newer** from PyPI:
+
+```sh
+python -m pip install --upgrade 'tazo-sdk>=0.1.4'
+```
+
 Open a stream with `audio_scope="turn", evaluation_mode="manual"` and omit
 `evaluation_interval_ms`. Continue sending audio while your external VAD or
 webhook handler calls
