@@ -8,7 +8,8 @@ model discovery, and health. API-key management and internal APIs are outside th
 
 ## Install
 
-Python 3.11 or newer is required. Install [tazo-sdk from PyPI](https://pypi.org/project/tazo-sdk/):
+Python 3.11 or newer is required. The current published release is **0.1.5**.
+Install [tazo-sdk from PyPI](https://pypi.org/project/tazo-sdk/):
 
 ```sh
 python -m pip install tazo-sdk

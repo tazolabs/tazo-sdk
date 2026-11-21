@@ -17,8 +17,8 @@ channels:
     address: /v1/decisions/stream
     title: Stream decisions
     description: Send audio and receive typed decisions over one WebSocket connection. Chunk mode has
-      no cumulative audio-duration cap and reports max_turn_audio_ms as null. Turn mode reports a numeric
-      model/server limit. Manual evaluation selects explicit source sample ranges while audio continues;
+      no cumulative audio-duration cap and reports max_turn_audio_ms as null. In turn mode obey a numeric
+      model/server limit when advertised; null means no fixed turn-duration cap. Manual evaluation selects explicit source sample ranges while audio continues;
       interval evaluation requires waiting for decision.finalized before sending the next turn.
     servers:
     - $ref: '#/servers/production'
@@ -402,7 +402,7 @@ components:
     SessionStart:
       additionalProperties: false
       description: >-
-        Request text uses the account's character limit (1,000 by default); see the Limits guide.
+        Request text uses the account/deployment's character limit; see the Limits guide and request_text_too_long feedback.
         Exceeding it returns fatal request_text_too_long and closes with code 1008.
       properties:
         model:
@@ -576,7 +576,7 @@ components:
             type: integer
           - type: 'null'
           title: Max Turn Audio Ms
-          description: Null for continuous chunk streams; otherwise the maximum audio duration per turn.
+          description: Maximum audio duration per turn or manual selected range when numeric. Null means no fixed duration cap; rolling buffers, message limits, session lifetime, and account limits still apply.
         max_audio_message_bytes:
           exclusiveMinimum: 0
           title: Max Audio Message Bytes

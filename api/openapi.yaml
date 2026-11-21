@@ -68,7 +68,7 @@ paths:
                 audio:
                   type: string
                   format: binary
-                  description: One audio file, up to 16 MB.
+                  description: One audio file, up to 16 MiB (16,777,216 bytes).
             encoding:
               request:
                 contentType: application/json
@@ -137,16 +137,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '413':
-          description: The audio is over 16 MB (`audio_too_large`), or the request
-            is too large to persist (`request_too_large`).
+          description: The audio is over 16 MiB (16,777,216 bytes; `audio_too_large`),
+            or the request is too large to persist (`request_too_large`).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '422':
           description: The `request` JSON does not match the v1 contract (`invalid_request`),
-            its combined text exceeds the account's limit (1,000 characters by default;
-            `request_text_too_long`), or the model rejected it (`model_rejected_request`).
+            its combined text exceeds the account/deployment's limit (`request_text_too_long`;
+            the error reports the count and limit), or the model rejected it (`model_rejected_request`).
           content:
             application/json:
               schema:
