@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.1.3 — Unreleased
+## 0.1.4 — 2026-11-19
+
+- Support multiple streaming questions when the selected model advertises that
+  capability; model-specific limits still apply.
 
 - Add opt-in manual streaming evaluation to both clients with
   `audio_scope="turn", evaluation_mode="manual"` and explicit source-sample
@@ -15,6 +18,9 @@
   exports. Publication remains manual and tag-gated in this repository.
 
 No runtime dependencies were added. The SDK continues to send mono 16 kHz PCM16.
+
+The manual-evaluation changes were previously available as version 0.1.3 on
+TestPyPI. Version 0.1.4 includes those changes in the public PyPI release.
 
 ## 0.1.2 — 2026-10-30
 
