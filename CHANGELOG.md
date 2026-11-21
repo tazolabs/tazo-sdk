@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.5 — Unreleased
+## 0.1.5 — 2026-11-22
 
 - Document up to ten mixed choice/noul questions for one audio upload or stream,
   subject to the target deployment's advertised capabilities.
