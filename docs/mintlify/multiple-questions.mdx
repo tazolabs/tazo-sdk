@@ -1,0 +1,100 @@
+---
+title: Multiple questions
+description: Use one upload or stream for several typed decisions with either Python client.
+---
+
+Tazo Large supports up to ten `choice` and/or `noul` questions per audio input.
+Use `tazo-sdk>=0.1.4` for multiple streaming questions. Check the selected
+deployment's `capabilities.max_questions` and `ready` through `models.list()`;
+see [rollout availability](/guides/multiple-questions).
+
+## Synchronous upload
+
+```python
+from pathlib import Path
+
+from tazo import Tazo
+
+questions = {
+    "action": {
+        "type": "choice",
+        "instructions": "Which action should be taken?",
+        "criteria": {"get_weather": "Get weather.", "NO_TOOL": "No tool needed."},
+    },
+    "asking_question": {
+        "type": "noul",
+        "instructions": "Is the speaker asking a question?",
+    },
+}
+
+with Tazo() as client:
+    result = client.decisions.create(
+        audio=Path("request.wav"),
+        state="Listen to the user's spoken request.",
+        questions=questions,
+    )
+    for question_id, answer in result.answers.items():
+        print(question_id, answer.model_dump())
+```
+
+`ChoiceAnswer` exposes `choice`, `confidence`, and `probabilities`;
+`NoulAnswer.noul` is the probability of true. Do not assume every answer is a
+choice or always read only `answers["action"]`.
+
+## Asynchronous upload
+
+The same map works with `AsyncTazo`:
+
+```python
+import asyncio
+
+from tazo import AsyncTazo
+
+
+async def main():
+    async with AsyncTazo() as client:
+        result = await client.decisions.create(
+            audio=Path("request.wav"),
+            state="Listen to the user's spoken request.",
+            questions=questions,
+        )
+        for question_id, answer in result.answers.items():
+            print(question_id, answer.model_dump())
+
+
+asyncio.run(main())
+```
+
+## Streams and manual commits
+
+Pass `questions=questions` to either client's `decisions.stream()`. Each
+`decision.updated` and `decision.finalized` contains the full `event.answers`
+map. Keep one receiving task/thread and send audio concurrently, as in the
+[streaming guide](/sdk/python/streaming).
+
+For manual evaluation, add `audio_scope="turn", evaluation_mode="manual"`.
+One `commit(audio_start_sample=..., audio_end_sample=...)` evaluates every
+question on that range. All questions share the audio scope and evaluation
+timing. Use separate sessions when those settings must differ.
+
+The SDK validates answer IDs and types against the full question map. The
+server enforces the deployment's model limits and combined request-text budget.
+Single-question calls remain valid, and adding questions does not multiply
+audio usage charges.
+
+## Runnable example
+
+The public repository includes
+[multiple_questions.py](https://github.com/tazolabs/tazo-sdk/blob/main/examples/multiple_questions.py).
+From an SDK checkout with `TAZO_API_KEY` set:
+
+```bash
+python examples/multiple_questions.py examples/weather.wav
+python examples/multiple_questions.py examples/weather.wav --async-client
+python examples/multiple_questions.py examples/weather.wav --mode stream
+python examples/multiple_questions.py examples/weather.wav --mode stream --async-client
+```
+
+The example checks the target's capabilities before submitting audio, prints
+both answers, and respects the streaming message size. Use `--base-url` to
+select an explicitly configured API endpoint; omit `/v1` from that URL.

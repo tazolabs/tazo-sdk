@@ -20,12 +20,13 @@ paths:
       - Decisions
       operationId: createDecision
       summary: Take decision
-      description: Sends audio and a set of questions, and waits for the typed answers.
-        The request is persisted before processing. If the caller disconnects or the
-        wait times out, processing continues. When metering is enabled, Tazo Large
-        audio is counted from samples and deducted in milliseconds, with sub-millisecond
-        fractions carried forward across usage. New work requires positive paid credit;
-        admitted work may finish below zero.
+      description: Sends one audio input and up to ten questions for Tazo Large, subject
+        to the deployment's advertised capabilities, and waits for one answer per
+        question ID. All questions share state and the request text budget. The request
+        is persisted before processing. If the caller disconnects or the wait times
+        out, processing continues. Audio is billed once per upload, rounded up once
+        to a whole second, regardless of question count. New work requires positive
+        audio credit; admitted work may finish below zero.
       security:
       - bearerAuth: []
       - accessToken: []
@@ -48,8 +49,10 @@ paths:
           request.wav\"),\n        state=\"Choose an action.\",\n        questions={\"\
           action\": {\n            \"type\": \"choice\",\n            \"instructions\"\
           : \"Which action should be taken?\",\n            \"criteria\": {\"get_weather\"\
-          : \"Get weather.\", \"NO_TOOL\": \"No tool needed.\"},\n        }},\n  \
-          \  )\n    print(result.answers[\"action\"])\n"
+          : \"Get weather.\", \"NO_TOOL\": \"No tool needed.\"},\n        }, \"asking_question\"\
+          : {\n            \"type\": \"noul\",\n            \"instructions\": \"Is\
+          \ the speaker asking a question?\",\n        }},\n    )\n    for question_id,\
+          \ answer in result.answers.items():\n        print(question_id, answer.model_dump())\n"
       requestBody:
         required: true
         content:
@@ -344,8 +347,9 @@ components:
           type: string
     DecisionRequest:
       type: object
-      description: State, question instructions, and criteria share the account's
-        character budget (1,000 by default). See the Limits guide for counting rules.
+      description: Shared state and all questions, instructions, and criteria share
+        one account text budget. Regional defaults and account overrides can differ.
+        See the Limits guide for counting rules.
       additionalProperties: false
       required:
       - state
@@ -367,7 +371,9 @@ components:
         questions:
           type: object
           minProperties: 1
-          description: Map of caller-chosen question ID to question.
+          description: Map of caller-chosen question IDs to questions. Tazo Large
+            supports up to ten, subject to the target deployment's capabilities.max_questions.
+            Every question shares the audio and state and receives its own answer.
           additionalProperties:
             $ref: '#/components/schemas/Question'
           example:
@@ -377,6 +383,9 @@ components:
               criteria:
                 NO_TOOL: Respond directly without calling a tool.
                 get_weather: Get weather for a city.
+            asking_question:
+              type: noul
+              instructions: Is the speaker asking a question?
     Question:
       oneOf:
       - $ref: '#/components/schemas/ChoiceQuestion'
@@ -455,7 +464,8 @@ components:
           example: tazo-large
         answers:
           type: object
-          description: Answers keyed by the question IDs you supplied.
+          description: One typed answer for every question ID supplied in the request,
+            all for the same audio.
           additionalProperties:
             $ref: '#/components/schemas/Answer'
         usage:
@@ -572,6 +582,9 @@ components:
         max_questions:
           type: integer
           minimum: 1
+          description: Maximum questions accepted by this deployment. Tazo Large supports
+            up to ten after its regional rollout.
+          example: 10
         max_choice_options:
           type: integer
           minimum: 2
