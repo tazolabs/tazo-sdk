@@ -60,6 +60,11 @@ the last window. Set `audio_scope="turn"` explicitly to evaluate cumulative audi
 | `await session.update(state=..., questions=...)` | Between turns; consume `session.updated`. |
 | `await session.finish()` | Consume remaining events through `session.closed`. |
 
+Each evaluation returns every requested question in `event.answers`. Tazo Large
+supports up to ten questions, subject to deployment capabilities; they all share
+the session's audio scope and evaluation timing. A manual commit evaluates all
+questions on the selected range. See [Multiple questions](/sdk/python/multiple-questions).
+
 Only one task may receive. Bounded websocket queues apply backpressure; there is
 no unbounded SDK audio queue. Normal errors appear as `ErrorEvent`; fatal errors
 raise `StreamingError`. Unknown future events are preserved as `UnknownEvent`.
@@ -72,6 +77,12 @@ parent client. Context exit closes immediately and does not cancel accepted work
 See the [protocol reference](/api-reference/streaming/decisions).
 
 ## External turn boundaries
+
+Use **tazo-sdk 0.1.4 or newer** for manual source-range triggers:
+
+```bash
+python -m pip install --upgrade 'tazo-sdk>=0.1.4'
+```
 
 Open the session with `audio_scope="turn", evaluation_mode="manual"` and omit
 `evaluation_interval_ms`. The audio producer continues calling `send_audio` while

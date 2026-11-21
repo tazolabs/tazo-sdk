@@ -33,7 +33,7 @@ Upload audio and wait for a typed decision.
 
   * **state** (*str*  *|*_dict_*\[*_str_*,* *Any*_]_ *|* *list*_\[_*str*_]_) – Shared context as a string, object, or list of strings.
 
-  * **questions** (*Mapping*_\[_*str*_,_ [*ChoiceQuestion*](<> "tazo.types.ChoiceQuestion")  *|*[*NoulQuestion*](<> "tazo.types.NoulQuestion")  *|*[*ChoiceQuestionParam*](<> "tazo.types.ChoiceQuestionParam")  *|*[*NoulQuestionParam*](<> "tazo.types.NoulQuestionParam")*]*) – Question-ID map of choice/noul dictionaries or typed models.
+  * **questions** (*Mapping*_\[_*str*_,_ [*ChoiceQuestion*](<> "tazo.types.ChoiceQuestion")  *|*[*NoulQuestion*](<> "tazo.types.NoulQuestion")  *|*[*ChoiceQuestionParam*](<> "tazo.types.ChoiceQuestionParam")  *|*[*NoulQuestionParam*](<> "tazo.types.NoulQuestionParam")*]*) – Question-ID map of choice/noul dictionaries or typed models. Tazo Large supports up to ten questions about the same audio. Check models.list() for the target deployment’s capabilities.
 
   * **model** (*str*) – Public model ID. Defaults to tazo-large.
 
@@ -63,13 +63,13 @@ Upload audio and wait for a typed decision.
 stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_mode='interval', evaluation_interval_ms=None, event_timeout=65)
 ```
 
-Create a context-managed session for one question and multiple turns.
+Create a context-managed session for multiple questions and turns.
 
 * Parameters:
 
   * **state** (*str*  *|*_dict_*\[*_str_*,* *Any*_]_ *|* *list*_\[_*str*_]_) – Context for the decision.
 
-  * **questions** (*Mapping*_\[_*str*_,_ [*ChoiceQuestion*](<> "tazo.types.ChoiceQuestion")  *|*[*NoulQuestion*](<> "tazo.types.NoulQuestion")  *|*[*ChoiceQuestionParam*](<> "tazo.types.ChoiceQuestionParam")  *|*[*NoulQuestionParam*](<> "tazo.types.NoulQuestionParam")*]*) – Exactly one choice or noul question.
+  * **questions** (*Mapping*_\[_*str*_,_ [*ChoiceQuestion*](<> "tazo.types.ChoiceQuestion")  *|*[*NoulQuestion*](<> "tazo.types.NoulQuestion")  *|*[*ChoiceQuestionParam*](<> "tazo.types.ChoiceQuestionParam")  *|*[*NoulQuestionParam*](<> "tazo.types.NoulQuestionParam")*]*) – Question-ID map of choice/noul questions. Tazo Large supports up to ten; the target deployment’s advertised capabilities apply. Every decision event contains an answer for each question ID.
 
   * **model** (*str*) – Public model ID; the model’s advertised capabilities apply.
 
@@ -109,7 +109,7 @@ async create(*, audio, state, questions, model='tazo-large', idempotency_key=Non
 
 Async counterpart of Decisions.create, with identical input and retry policy.
 
-File reads run in a worker thread; HTTP uses native asynchronous I/O. Cancellation does not imply cancellation of accepted server-side work. Retain a caller-supplied key when cancellation recovery is required.
+File reads run in a worker thread; HTTP uses native asynchronous I/O. Multiple questions share the uploaded audio and state. Answers are keyed by the submitted question IDs, as in Decisions.create. Cancellation does not imply cancellation of accepted server-side work. Retain a caller-supplied key when cancellation recovery is required.
 
 * Parameters:
 
@@ -139,7 +139,7 @@ stream(*, state, questions, model='tazo-large', audio_scope='chunk', evaluation_
 
 Create an async context manager; use async for to receive typed events.
 
-Parameters match Decisions.stream. This method isn’t awaited; use `async with client.decisions.stream(...) as session`.
+Parameters match Decisions.stream. This method isn’t awaited; use `async with client.decisions.stream(...) as session`. All questions share the audio scope, evaluation interval and committed range. Each decision event contains the complete question-ID answer map.
 
 * Parameters:
 

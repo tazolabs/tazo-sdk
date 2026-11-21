@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.5 — Unreleased
+
+- Document up to ten mixed choice/noul questions for one audio upload or stream,
+  subject to the target deployment's advertised capabilities.
+- Add a runnable example covering sync/async uploads and streaming, with a
+  capability check before inference during regional rollouts.
+- Correct resource docstrings and regenerate the Python reference.
+- Add transport tests for one, two and ten questions, mixed answer types, manual
+  sample ranges, incomplete responses and older deployments.
+- Keep the four public operations and runtime dependencies unchanged. SDK 0.1.4
+  already supports the multi-question request shape; this release improves its
+  documentation and verification.
+
 ## 0.1.4 — 2026-11-19
 
 - Support multiple streaming questions when the selected model advertises that

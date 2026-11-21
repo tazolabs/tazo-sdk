@@ -92,6 +92,8 @@ class Decisions:
                 current position; seekable streams are restored and never closed.
             state: Shared context as a string, object, or list of strings.
             questions: Question-ID map of choice/noul dictionaries or typed models.
+                Tazo Large supports up to ten questions about the same audio.
+                Check models.list() for the target deployment's capabilities.
             model: Public model ID. Defaults to tazo-large.
             idempotency_key: Retained operation key, or None to generate a new one.
                 Every automatic retry reuses the same key and upload snapshot.
@@ -130,11 +132,13 @@ class Decisions:
         evaluation_interval_ms: int | None = None,
         event_timeout: float = 65,
     ) -> StreamingSession:
-        """Create a context-managed session for one question and multiple turns.
+        """Create a context-managed session for multiple questions and turns.
 
         Args:
             state: Context for the decision.
-            questions: Exactly one choice or noul question.
+            questions: Question-ID map of choice/noul questions. Tazo Large supports
+                up to ten; the target deployment's advertised capabilities apply.
+                Every decision event contains an answer for each question ID.
             model: Public model ID; the model's advertised capabilities apply.
             audio_scope: chunk (default) evaluates new audio; turn evaluates cumulative audio.
             evaluation_mode: interval (default), or manual with turn scope and sample-range commits.
@@ -178,6 +182,8 @@ class AsyncDecisions:
         """Async counterpart of Decisions.create, with identical input and retry policy.
 
         File reads run in a worker thread; HTTP uses native asynchronous I/O.
+        Multiple questions share the uploaded audio and state. Answers are keyed
+        by the submitted question IDs, as in Decisions.create.
         Cancellation does not imply cancellation of accepted server-side work.
         Retain a caller-supplied key when cancellation recovery is required.
         """
@@ -210,6 +216,8 @@ class AsyncDecisions:
 
         Parameters match Decisions.stream. This method isn't awaited; use
         ``async with client.decisions.stream(...) as session``.
+        All questions share the audio scope, evaluation interval and committed
+        range. Each decision event contains the complete question-ID answer map.
         """
         self._http.headers(authenticated=True, key=None)
         return AsyncStreamingSession(

@@ -3,7 +3,24 @@ title: Python SDK changelog
 description: Releases, API compatibility, and migration notes.
 ---
 
-## 0.1.3 — Unreleased
+## 0.1.5 — Unreleased
+
+- Document multiple questions across uploads, interval streams, and manual commits.
+- Add a runnable capability-checked example for both clients and transports.
+- Correct SDK reference descriptions and add transport regression coverage.
+- SDK 0.1.4 already supports multiple questions; the target deployment controls
+  availability and limits.
+
+## 0.1.4 — 2026-11-19
+
+- Manual streaming evaluation in both clients with source-sample range commits.
+- Typed input ranges and retained connection sample clocks across turns.
+- Multiple streaming questions, subject to the selected model's capabilities.
+- Existing uploads and default interval streaming remain compatible.
+
+Upgrade with `python -m pip install --upgrade 'tazo-sdk>=0.1.4'`.
+
+## 0.1.3 — TestPyPI preview
 
 - Evaluate externally selected utterances with `audio_scope="turn"` and
   `evaluation_mode="manual"`. Pass connection-relative, exclusive-end sample

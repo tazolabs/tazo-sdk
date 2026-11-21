@@ -17,14 +17,14 @@ final decision covering the complete recording followed by `session.closed`.
 
 ## Run against the PyPI package
 
-Use Python 3.11 or newer, a virtual environment with `tazo-sdk==0.1.1` installed
+Use Python 3.11 or newer, a virtual environment with `tazo-sdk>=0.1.4` installed
 from PyPI, and a key created in the [Tazo console](https://app.tazolabs.com).
 Run directly with that environment's Python from the repository root:
 
 ```sh
 export TAZO_API_KEY='YOUR_TAZO_API_KEY'
-python packages/tazo-sdk/examples/verify.py \
-  --audio packages/tazo-sdk/examples/weather.wav \
+python examples/verify.py \
+  --audio examples/weather.wav \
   --base-url https://api.tazolabs.com \
   --expected-choice get_weather \
   --output /tmp/tazo-sdk-verification.json
@@ -62,6 +62,24 @@ individual operations and durable idempotency replay checks.
 1. Confirm the PyPI page and Mintlify SDK overview show the released version's
    installation instructions and changelog.
 2. Review and merge repository changes for this example through the SDK CI and
-   Mintlify preview checks. The published `sdk-v0.1.1` tag stays at its released commit.
+   Mintlify preview checks. The published `sdk-v0.1.4` tag stays at its released commit.
 3. Keep the JSON report locally if needed, and revoke temporary test keys when
    finished. Future SDK package changes need a new version and release tag.
+
+## Multiple questions on one audio input
+
+`multiple_questions.py` asks a choice question and a yes/no (`noul`) question
+about the same WAV. It checks the actual target's model capabilities first,
+then prints the full answer map. Run from an SDK checkout:
+
+```sh
+python examples/multiple_questions.py examples/weather.wav
+python examples/multiple_questions.py examples/weather.wav --async-client
+python examples/multiple_questions.py examples/weather.wav --mode stream
+python examples/multiple_questions.py examples/weather.wav --mode stream --async-client
+```
+
+Set `TAZO_API_KEY` as above. `--base-url` selects an explicitly configured API
+endpoint; omit `/v1`. Streaming uses mono 16 kHz PCM16 and honors the negotiated
+message size. The model's question limit and the account's combined text budget
+apply; this script does not split one request into several calls.
