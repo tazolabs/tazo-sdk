@@ -1,11 +1,15 @@
 # Release a new SDK version
 
-SDK **0.1.4** is already published. This checkout prepares stable **0.1.5**,
-tagged **`sdk-v0.1.5`**, with multi-question documentation, runnable examples
-and regression coverage. Review [CHANGELOG.md](CHANGELOG.md). Existing 0.1.4
+SDK **0.1.5** is published on TestPyPI and PyPI from **`sdk-v0.1.5`**, with
+multi-question documentation, runnable examples and regression coverage.
+Review [CHANGELOG.md](CHANGELOG.md). Existing 0.1.4
 clients already accept multiple questions; the target API must advertise the
 required capabilities. Complete the one-time environments and trusted-publisher
 setup in [SETUP.md](SETUP.md) before publishing from `tazolabs/tazo-sdk`.
+
+The commands below record the completed 0.1.5 release. For a future release,
+replace every example version, tag and environment path with the next reviewed,
+unpublished version. Do not rerun publication for 0.1.5 or move its tag.
 
 Create the tag only after the preparation PR is merged and CI passes on `main`.
 A tag belongs to a commit, not to a PR; tagging before a squash merge can leave
@@ -115,8 +119,8 @@ Install the new TestPyPI version in a clean Python 3.11+ environment. Use the
 same dependency ranges from `pyproject.toml`; for this example:
 
 ```sh
-python3 -m venv /tmp/tazo-sdk-testpypi-0.1.3
-source /tmp/tazo-sdk-testpypi-0.1.3/bin/activate
+python3 -m venv /tmp/tazo-sdk-testpypi-0.1.5
+source /tmp/tazo-sdk-testpypi-0.1.5/bin/activate
 env -u PIP_EXTRA_INDEX_URL -u PIP_INDEX_URL PIP_CONFIG_FILE=/dev/null \
   python -m pip install --index-url https://pypi.org/simple/ \
   'httpx>=0.27,<1' 'pydantic>=2.10,<3' 'websockets>=15,<18'
@@ -149,8 +153,8 @@ exact tested files from that run. Neither workflow uses `skip-existing`.
 Verify normal PyPI installation in another clean environment:
 
 ```sh
-python3 -m venv /tmp/tazo-sdk-pypi-0.1.3
-source /tmp/tazo-sdk-pypi-0.1.3/bin/activate
+python3 -m venv /tmp/tazo-sdk-pypi-0.1.5
+source /tmp/tazo-sdk-pypi-0.1.5/bin/activate
 env -u PIP_EXTRA_INDEX_URL -u PIP_INDEX_URL PIP_CONFIG_FILE=/dev/null \
   python -m pip install --index-url https://pypi.org/simple/ 'tazo-sdk==0.1.5'
 python -m pip check
