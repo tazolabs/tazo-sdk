@@ -6,6 +6,10 @@ description: Native async requests, application lifetimes, and cancellation.
 Use `AsyncTazo` in an asynchronous application. It has the same configuration
 and resource names as `Tazo`.
 
+The same question map can include up to ten choice and/or noul questions for
+Tazo Large. One awaited upload returns all answers; one streaming event contains
+the full answer map. See [Multiple questions](/sdk/python/multiple-questions).
+
 ```python
 import asyncio
 from tazo import AsyncTazo

@@ -5,6 +5,8 @@ info:
   description: Client-facing WebSocket protocol. Send operations describe messages from your application
     to Tazo; receive operations describe messages from Tazo to your application. Authenticate in the first
     session.start message. HTTP authorization headers alone do not start a session.
+    Tazo Large supports up to ten questions when advertised by the deployment. Every decision
+    contains an answer per question ID for the same audio window or committed sample range.
 defaultContentType: application/json
 servers:
   production:
@@ -91,6 +93,9 @@ components:
               criteria:
                 NO_TOOL: Respond directly without calling a tool.
                 get_weather: Get weather for a city.
+            asking_question:
+              type: noul
+              instructions: Is the speaker asking a question?
           input_audio:
             encoding: pcm_s16le
             sample_rate_hz: 16000
@@ -114,6 +119,9 @@ components:
               criteria:
                 NO_TOOL: Respond directly without calling a tool.
                 get_weather: Get weather for a city.
+            asking_question:
+              type: noul
+              instructions: Is the speaker asking a question?
     inputCommit:
       name: input.commit
       title: input.commit
@@ -160,7 +168,7 @@ components:
     sessionUpdated:
       name: session.updated
       title: session.updated
-      summary: The replacement context and question were accepted.
+      summary: The replacement context and full question map were accepted.
       payload:
         $ref: '#/components/schemas/SessionUpdated'
       examples:
@@ -199,6 +207,9 @@ components:
                 NO_TOOL: 0.08
                 get_weather: 0.92
               confidence: 0.92
+            asking_question:
+              type: noul
+              noul: 0.98
           usage:
             audio_seconds: 0.5
           elapsed_ms: 52.0
@@ -233,6 +244,9 @@ components:
                 NO_TOOL: 0.08
                 get_weather: 0.92
               confidence: 0.92
+            asking_question:
+              type: noul
+              noul: 0.98
           usage:
             audio_seconds: 0.5
           elapsed_ms: 52.0
@@ -413,7 +427,7 @@ components:
           minProperties: 1
           title: Questions
           type: object
-          description: At least one question, up to the selected model's capabilities.max_questions limit from /v1/models. Use Tazo Large. Tazo Small is unavailable through the API;
+          description: One to ten questions for Tazo Large, subject to the deployment's capabilities.max_questions from /v1/models. All share state and audio; every decision returns all question IDs. Use Tazo Large. Tazo Small is unavailable through the API;
             requests receive a fatal model_unavailable error and close code 1008. Contact support@tazolabs.com for assistance.
         type:
           const: session.start
@@ -485,6 +499,7 @@ components:
           minProperties: 1
           title: Questions
           type: object
+          description: Full replacement question map. Tazo Large supports up to ten questions, subject to the target deployment's capabilities; retain every desired question ID.
       required:
       - type
       - state

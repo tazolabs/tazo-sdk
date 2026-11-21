@@ -1,6 +1,8 @@
 # Tazo Python SDK
 
 Typed, synchronous and asynchronous clients for Tazo audio decisions.
+Ask up to ten independent questions about the same audio in one upload or
+streaming session, subject to the target deployment's advertised capabilities.
 Supports exactly four public operations: uploaded decisions, streaming decisions,
 model discovery, and health. API-key management and internal APIs are outside this package.
 
@@ -33,7 +35,11 @@ questions = {
             "get_weather": "Get weather for a city.",
             "NO_TOOL": "No tool is needed.",
         },
-    }
+    },
+    "asking_question": {
+        "type": "noul",
+        "instructions": "Is the speaker asking a question?",
+    },
 }
 
 with Tazo() as client:
@@ -42,13 +48,20 @@ with Tazo() as client:
         state="Choose the action matching the spoken request.",
         questions=questions,
     )
-    print(result.answers["action"])
+    for question_id, answer in result.answers.items():
+        print(question_id, answer.model_dump())
     print(result.request_id, result.idempotency_key)
 ```
 
 `model` defaults to `tazo-large`. Choice and noul dictionaries or the optional
 `ChoiceQuestion` / `NoulQuestion` models are accepted. Check `models.list()` for
 model-specific capabilities. Score questions aren't supported by this SDK release.
+Every answer preserves its question ID. All questions share the audio and state,
+and they count toward one combined text budget. Audio is charged once per upload
+or streaming session; questions do not multiply that charge. Check
+`capabilities.max_questions` before use during regional rollouts.
+See [Multiple questions](https://docs.tazolabs.com/sdk/python/multiple-questions)
+and `examples/multiple_questions.py` for all four client/transport combinations.
 
 Audio can be a path, bytes, or a binary stream. For bytes, pass `filename` and
 `content_type` when known. Uploads are snapshotted once, up to 16 MiB, so retries
@@ -64,7 +77,12 @@ from tazo import Tazo
 with Tazo() as client:
     print(client.health.check().status)  # ok or unavailable; no auth sent
     for model in client.models.list().models:
-        print(model.id, model.ready, model.capabilities.question_types)
+        print(
+            model.id,
+            model.ready,
+            model.capabilities.question_types,
+            model.capabilities.max_questions,
+        )
 ```
 
 Credentials are required only for protected calls. HTTP 503 with the documented
@@ -90,7 +108,10 @@ async context manager, not an awaitable factory.
 
 ## Streaming
 
-Both clients expose `decisions.stream(state=..., questions=...)`. Entering the
+Both clients expose `decisions.stream(state=..., questions=...)`.
+Pass the complete question map: every decision event returns an answer for each
+ID in `event.answers`. All questions share the audio scope, evaluation timing
+and manual commit range. Separate sessions are needed only for different settings. Entering the
 context authenticates in `session.start` and waits for `session.ready`. Inspect
 `session.ready` for limits. Send raw mono 16 kHz PCM16 little-endian bytes, at most
 `max_audio_message_bytes` per message. The `wav_chunks` helper strips WAV headers
